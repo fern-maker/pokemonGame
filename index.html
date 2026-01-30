@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Final Fix</title>
+    <title>Pokémon Battle: Helper Hint</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -124,36 +124,69 @@
         .move-option.selected { border-color: var(--pokemon-yellow); background: #2a2a2a; }
         .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
         .action-btn { padding: 10px 20px; font-family: 'Press Start 2P'; cursor: pointer; background: #4caf50; color: white; border: none; font-size: 10px; }
+        .action-btn.cancel { background: #f44336; }
         .action-btn:disabled { background: #555; cursor: not-allowed; }
 
         /* BATTLE */
         #game-container { z-index: 10; width: 100%; height: 100%; justify-content: flex-start; }
         .battle-scene { flex: 1; width: 100%; position: relative; overflow: hidden; background: linear-gradient(to bottom, #64b0ff 0%, #a0d8ef 55%, #70c070 55%, #4a804a 100%); }
         .hud { position: absolute; background: rgba(248, 248, 248, 0.95); border: 4px solid #444; border-radius: 12px; padding: 15px; width: 320px; max-width: 45%; z-index: 10; border-bottom-right-radius: 25px; }
-        #enemy-hud { top: 40px; left: 40px; }
-        #player-hud { bottom: 40px; right: 40px; }
+        #enemy-hud { bottom: 40px; right: 40px; }
+        #player-hud { top: 40px; left: 40px; }
         .hp-bar-bg { width: 100%; height: 12px; background-color: #ddd; margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden; }
         .hp-bar-fill { height: 100%; width: 100%; background-color: var(--hp-green); transition: width 0.5s ease, background-color 0.5s ease; }
         .info-text { font-size: clamp(10px, 1.2vw, 14px); margin-bottom: 5px; display: flex; justify-content: space-between; color: #333; text-transform: capitalize; }
         .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; color: #333; display:flex; justify-content: space-between;}
         .ability-badge { color: #555; font-weight: bold; font-size: 7px; background: #ddd; padding: 2px 4px; border-radius: 4px; border: 1px solid #999; }
-        .sprite-container { position: absolute; z-index: 5; display: flex; justify-content: center; align-items: flex-end; }
-        #enemy-pos { top: 15%; right: 15%; width: 250px; height: 250px; }
-        #player-pos { bottom: 8%; left: 10%; width: 250px; height: 250px; }
-        .sprite-image { width: 100%; image-rendering: pixelated; position: relative; z-index: 2; filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); opacity: 0; }
-        .platform { width: 80%; height: 30%; background-color: #e0eec0; border: 4px solid #6b8c42; border-radius: 50%; position: absolute; bottom: 20px; left: 10%; opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1); }
+        
+        /* --- VISUAL FIXES HERE --- */
+        .sprite-container { 
+            position: absolute; z-index: 5; 
+            width: 300px; height: 300px; 
+            display: flex; justify-content: center; align-items: flex-end; 
+        }
+        
+        #enemy-pos { top: 25%; right: 10%; } 
+        #player-pos { bottom: 15%; left: 10%; }
+        
+        .sprite-image { 
+            width: auto; height: auto; 
+            image-rendering: pixelated; 
+            position: relative; z-index: 2; 
+            filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); 
+            opacity: 0; 
+            transform-origin: bottom center; 
+            margin-bottom: 30px; 
+            backface-visibility: hidden;
+            transform: translateZ(0);
+            will-change: transform, opacity;
+        }
+
+        #player-img { transform: scale3d(3.8, 3.8, 1); } 
+        #enemy-img { transform: scale3d(3.0, 3.0, 1); } 
+
+        .platform { width: 300px; height: 100px; background-color: #e0eec0; border: 4px solid #6b8c42; border-radius: 50%; position: absolute; bottom: 0px; left: 50%; margin-left: -150px; opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1); }
         .pokeball-sprite { width: 30px; height: 30px; position: absolute; z-index: 20; display: none; background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'); background-size: contain; background-repeat: no-repeat; }
-        #player-ball { bottom: 50px; left: -50px; }
-        #enemy-ball { top: 50px; right: -50px; }
-        .shiny-star { position: absolute; width: 25px; height: 25px; background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); z-index: 30; opacity: 0; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        @keyframes sparkle-burst { 0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(180deg); opacity: 0; } }
+        
+        #player-ball { bottom: 50px; left: -100px; }
+        #enemy-ball { top: 50px; right: -100px; }
+
+        .shiny-star { position: absolute; width: 40px; height: 40px; background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); z-index: 30; opacity: 0; bottom: 50px; left: 50%; transform: translateX(-50%); }
+        
+        @keyframes sparkle-burst { 0% { transform: translate(-50%, 0) scale(0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2.0) rotate(180deg); opacity: 0; } }
         .sparkle-anim { animation: sparkle-burst 0.8s ease-out forwards; }
-        @keyframes throwPlayer { 0% { left: -50px; bottom: 50px; transform: rotate(0deg); } 100% { left: 120px; bottom: 100px; transform: rotate(720deg); } }
-        @keyframes throwEnemy { 0% { right: -50px; top: 50px; transform: rotate(0deg); } 100% { right: 120px; top: 120px; transform: rotate(-720deg); } }
-        @keyframes popOut { 0% { transform: scale(0); filter: brightness(10); opacity: 0; } 40% { transform: scale(1.2); filter: brightness(5); opacity: 1; } 100% { transform: scale(1); filter: brightness(1); opacity: 1; } }
+        
+        @keyframes throwPlayer { 0% { left: -100px; bottom: 0px; transform: rotate(0deg); } 100% { left: 50%; bottom: 50%; transform: translate(-50%, 0) rotate(720deg); } }
+        @keyframes throwEnemy { 0% { right: -100px; top: 0px; transform: rotate(0deg); } 100% { right: 50%; top: 50%; transform: translate(50%, 0) rotate(-720deg); } }
+        
+        @keyframes popPlayer { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.8,3.8,1); opacity: 1; } }
+        @keyframes popEnemy { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.0,3.0,1); opacity: 1; } }
+
         .throw-p { animation: throwPlayer 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         .throw-e { animation: throwEnemy 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        .pop { animation: popOut 0.5s ease-out forwards; }
+        .pop-p { animation: popPlayer 0.5s ease-out forwards; }
+        .pop-e { animation: popEnemy 0.5s ease-out forwards; }
+        
         .control-panel { height: 30vh; width: 100%; background-color: var(--panel-bg); border-top: var(--ui-border); padding: 20px; color: white; display: flex; gap: 20px; align-items: center; }
         #dialogue-box { flex: 2; background-color: white; color: black; border: var(--ui-border); border-radius: 8px; padding: 20px; height: 100%; font-size: clamp(10px, 1.5vw, 18px); line-height: 1.6; display: flex; align-items: center; }
         .moves-container { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
@@ -163,11 +196,11 @@
         .reset-btn { display: none; width: 100%; background-color: #ffcc00; border-color: #bfa100; height: 100%; font-size: 20px; cursor: pointer; font-family: 'Press Start 2P'; border-width: 4px;}
         #mute-btn { position: fixed; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.5); color: white; border: 2px solid white; padding: 5px 10px; cursor: pointer; font-family: sans-serif; font-size: 12px; display: none; }
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 9998; transition: opacity 0.1s; }
-        @keyframes dropIn { 0% { opacity: 0; transform: translateY(-100px) scale(0.5); } 70% { opacity: 1; transform: translateY(10px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        @keyframes shake { 0%, 100% { transform: translate(0, 0); filter: none;} 20% { transform: translate(-15px, 0); filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 40% { transform: translate(15px, 0); } 60% { transform: translate(-15px, 0); } 80% { transform: translate(15px, 0); } }
-        @keyframes attack-lunge { 0% { transform: translate(0,0); } 50% { transform: translate(50px, -50px) scale(1.1); } 100% { transform: translate(0,0); } }
-        @keyframes attack-lunge-enemy { 0% { transform: translate(0,0); } 50% { transform: translate(-50px, 50px) scale(1.1); } 100% { transform: translate(0,0); } }
+        
+        @keyframes attack-lunge { 0% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } 50% { transform: translate3d(100px, -100px, 0) scale3d(4.2,4.2,1); } 100% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } }
+        @keyframes attack-lunge-enemy { 0% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } 50% { transform: translate3d(-100px, 100px, 0) scale3d(3.4,3.4,1); } 100% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } }
+        
+        @keyframes shake { 0%, 100% { transform: translate3d(0,0,0); filter: none;} 20% { transform: translate3d(-15px,0,0); filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 40% { transform: translate3d(15px,0,0); } 60% { transform: translate3d(-15px,0,0); } 80% { transform: translate3d(15px,0,0); } }
         .shake { animation: shake 0.5s; }
         .lunge { animation: attack-lunge 0.3s; }
         .lunge-enemy { animation: attack-lunge-enemy 0.3s; }
@@ -194,6 +227,18 @@
         .dt-card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .dt-title { font-weight: bold; margin-bottom: 5px; color: #333; text-transform: capitalize; }
         .dt-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #666; }
+
+        /* --- NEW: HINT BUBBLE --- */
+        #sidebar-hint {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.8); color: white; border: 1px solid #777;
+            padding: 10px 15px; border-radius: 20px;
+            font-size: 10px; font-family: 'Roboto', sans-serif;
+            pointer-events: none; z-index: 100;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #sidebar-hint strong { color: #ffeb3b; }
+        #sidebar-hint.hidden { opacity: 0; transform: translateY(10px); }
 
     </style>
 </head>
@@ -275,12 +320,13 @@
 
         <div id="flash-overlay"></div>
         <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
+        <div id="sidebar-hint">Press <strong>Right Shift</strong> for Battle Assistant</div>
     </div>
 
     <div id="chat-sidebar">
         <div class="chat-header">
             <span>PokéAssistant</span>
-            <span style="font-size: 10px; color: #aaa;">Press '0' to close</span>
+            <span style="font-size: 10px; color: #aaa;">Press 'Right Shift' to close</span>
         </div>
         <div class="chat-body" id="chat-history">
             <div class="chat-msg bot">
@@ -332,8 +378,8 @@
             "recover": {power: -50, type: "heal", cat: "Status"}, "roost": {power: -50, type: "heal", cat: "Status"}, "synthesis": {power: -50, type: "heal", cat: "Status"}, "rest": {power: -100, type: "heal", cat: "Status"} 
         };
 
-        const pokemonList = []; // Light list
-        const loadedPokemon = []; // Actual rendered list
+        const pokemonList = [];
+        const loadedPokemon = [];
         let currentOffset = 0;
         const BATCH_SIZE = 50;
 
@@ -397,11 +443,20 @@
             try {
                 const res = await fetch(p.url);
                 const details = await res.json();
+                
+                const s = details.sprites;
+                const other = s.other || {};
+                const showdown = other.showdown || {};
+                
                 p.fullData = {
                     id: details.id, name: details.name, types: details.types.map(t => t.type.name), ability: details.abilities[0].ability.name,
                     stats: { hp: details.stats[0].base_stat, atk: details.stats[1].base_stat, def: details.stats[2].base_stat, spa: details.stats[3].base_stat, spd: details.stats[4].base_stat, spe: details.stats[5].base_stat },
-                    front: details.sprites.front_default || p.sprite, back: details.sprites.back_default || details.sprites.front_default,
-                    frontShiny: details.sprites.front_shiny || p.spriteShiny, backShiny: details.sprites.back_shiny || details.sprites.back_default,
+                    
+                    front: showdown.front_default || s.front_default || p.sprite,
+                    back: showdown.back_default || s.back_default || s.front_default,
+                    frontShiny: showdown.front_shiny || s.front_shiny || p.spriteShiny,
+                    backShiny: showdown.back_shiny || s.back_shiny || s.front_shiny,
+                    
                     rawMoves: details.moves.map(m => m.move.name)
                 };
             } catch (e) { console.error("Failed data", e); }
@@ -420,23 +475,19 @@
         function renderSelectionGrid() {
             charGrid.innerHTML = "";
             currentOffset = 0;
-            
             const randomCard = document.createElement('div');
             randomCard.className = 'char-card random-card';
             randomCard.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random"><p>Random</p>`;
             randomCard.onclick = () => handleSelection(-1);
             charGrid.appendChild(randomCard);
-
             appendPokemonBatch();
         }
 
         function appendPokemonBatch() {
             const filterText = document.getElementById('search-bar').value.toLowerCase();
             const filtered = pokemonList.filter(p => p.name.includes(filterText));
-            
             const nextBatch = filtered.slice(currentOffset, currentOffset + BATCH_SIZE);
             if(nextBatch.length === 0) return;
-
             nextBatch.forEach((p) => {
                 const originalIndex = pokemonList.indexOf(p);
                 const card = document.createElement('div');
@@ -446,13 +497,10 @@
                 card.onclick = () => handleSelection(originalIndex);
                 charGrid.appendChild(card);
             });
-
             currentOffset += BATCH_SIZE;
         }
 
-        function filterGrid() {
-            renderSelectionGrid();
-        }
+        function filterGrid() { renderSelectionGrid(); }
 
         // --- UI & LOGIC ---
         function switchScreen(screenId) {
@@ -472,13 +520,7 @@
             finalEnemyMoves = null;
             document.getElementById('select-title').innerText = "Choose Your Pokémon";
             document.getElementById('search-bar').value = "";
-            
-            // FULL RESET OF STATE
-            isShinyMode = false;
-            isMoveMode = false;
-            document.getElementById('shiny-mode').checked = false;
-            document.getElementById('move-mode').checked = false;
-            
+            resetToggles(); 
             renderSelectionGrid();
             switchScreen('select-screen');
         }
@@ -486,9 +528,7 @@
         function resetToggles() {
             document.getElementById('shiny-mode').checked = false;
             document.getElementById('move-mode').checked = false;
-            isShinyMode = false;
-            isMoveMode = false;
-            renderSelectionGrid(document.getElementById('search-bar').value);
+            isShinyMode = false; isMoveMode = false;
         }
 
         function toggleShinyMode() {
@@ -496,46 +536,26 @@
             renderSelectionGrid();
         }
 
-        function toggleMoveMode() { 
-            isMoveMode = document.getElementById('move-mode').checked; 
-        }
+        function toggleMoveMode() { isMoveMode = document.getElementById('move-mode').checked; }
 
         async function handleSelection(index) {
             let pIndex = index;
             let isRandom = (index === -1);
+            if (isRandom) pIndex = Math.floor(Math.random() * pokemonList.length);
 
-            if (isRandom) {
-                pIndex = Math.floor(Math.random() * pokemonList.length);
-            }
-
-            // Determine Shiny Status
-            let chosenShiny = false;
-            if (isRandom) {
-                chosenShiny = Math.random() < 0.5;
-            } else {
-                chosenShiny = isShinyMode;
-            }
-
+            let chosenShiny = isRandom ? (Math.random() < 0.5) : isShinyMode;
             if (selectionPhase === 'player') playerShiny = chosenShiny;
             else enemyShiny = chosenShiny;
 
             await ensurePokemonData(pIndex);
 
-            // Handle Move Selection Logic
             if (selectionPhase === 'player') {
                 selectedPlayerIndex = pIndex;
-                if (isMoveMode && !isRandom) {
-                    openMoveSelector(pIndex, 'player');
-                } else {
-                    proceedToEnemySelect();
-                }
+                if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'player');
+                else proceedToEnemySelect();
             } else {
-                // Enemy Phase
-                if (isMoveMode && !isRandom) {
-                    openMoveSelector(pIndex, 'enemy');
-                } else {
-                    startGame(selectedPlayerIndex, pIndex);
-                }
+                if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'enemy');
+                else startGame(selectedPlayerIndex, pIndex);
             }
         }
 
@@ -543,13 +563,9 @@
             selectionPhase = 'enemy';
             document.getElementById('select-title').innerText = "Choose Opponent";
             document.getElementById('search-bar').value = "";
-            
-            // AUTO RESET CHECKBOXES
             document.getElementById('shiny-mode').checked = false;
             document.getElementById('move-mode').checked = false;
-            isShinyMode = false; 
-            isMoveMode = false;
-            
+            isShinyMode = false; isMoveMode = false;
             renderSelectionGrid();
         }
 
@@ -558,11 +574,9 @@
             const pData = pokemonList[pIndex].fullData;
             const validMoves = getValidMoves(pData);
             tempSelectedMoves = [];
-            
             document.getElementById('modal-pokemon-name').innerText = target === 'enemy' ? "Enemy " + pData.name.toUpperCase() : pData.name.toUpperCase();
             const grid = document.getElementById('modal-move-grid');
             grid.innerHTML = "";
-
             validMoves.forEach(move => {
                 const div = document.createElement('div');
                 div.className = 'move-option';
@@ -570,7 +584,6 @@
                 div.onclick = () => toggleMoveSelection(div, move);
                 grid.appendChild(div);
             });
-
             const btn = document.getElementById('confirm-moves-btn');
             btn.disabled = true; btn.innerText = "Confirm (0/4)";
             btn.onclick = () => confirmMoves(pIndex); 
@@ -579,15 +592,8 @@
 
         function toggleMoveSelection(div, move) {
             const index = tempSelectedMoves.indexOf(move);
-            if (index > -1) {
-                tempSelectedMoves.splice(index, 1);
-                div.classList.remove('selected');
-            } else {
-                if (tempSelectedMoves.length < 4) {
-                    tempSelectedMoves.push(move);
-                    div.classList.add('selected');
-                }
-            }
+            if (index > -1) { tempSelectedMoves.splice(index, 1); div.classList.remove('selected'); } 
+            else { if (tempSelectedMoves.length < 4) { tempSelectedMoves.push(move); div.classList.add('selected'); } }
             const count = tempSelectedMoves.length;
             const btn = document.getElementById('confirm-moves-btn');
             btn.innerText = `Confirm (${count}/4)`;
@@ -598,39 +604,27 @@
 
         function confirmMoves(currentIndex) {
             document.getElementById('move-modal').style.display = 'none';
-            
-            // AUTO RESET CHECKBOX
-            document.getElementById('move-mode').checked = false;
-            isMoveMode = false;
-
-            if (currentMoveSelectionTarget === 'player') {
-                finalPlayerMoves = JSON.parse(JSON.stringify(tempSelectedMoves));
-                proceedToEnemySelect();
-            } else {
-                finalEnemyMoves = JSON.parse(JSON.stringify(tempSelectedMoves));
-                startGame(selectedPlayerIndex, currentIndex);
-            }
+            document.getElementById('move-mode').checked = false; isMoveMode = false;
+            if (currentMoveSelectionTarget === 'player') { finalPlayerMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); proceedToEnemySelect(); }
+            else { finalEnemyMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); startGame(selectedPlayerIndex, currentIndex); }
         }
 
         async function startGame(pIndex, eIndex) {
             await ensurePokemonData(eIndex);
-
             const pData = pokemonList[pIndex].fullData;
             player = JSON.parse(JSON.stringify(pData));
-            player.maxHp = Math.floor(pData.stats.hp + 60 + 50); 
-            player.currHp = player.maxHp;
-            player.isPlayer = true;
+            player.maxHp = Math.floor(pData.stats.hp + 60 + 50); player.currHp = player.maxHp; player.isPlayer = true;
             player.moves = finalPlayerMoves ? finalPlayerMoves : pickRandomMoves(getValidMoves(pData));
 
             const eData = pokemonList[eIndex].fullData;
             enemy = JSON.parse(JSON.stringify(eData));
-            enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50);
-            enemy.currHp = enemy.maxHp;
-            enemy.isPlayer = false;
+            enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50); enemy.currHp = enemy.maxHp; enemy.isPlayer = false;
             enemy.moves = finalEnemyMoves ? finalEnemyMoves : pickRandomMoves(getValidMoves(eData));
 
+            // SAFE AUDIO START
             welcomeBgm.pause();
-            battleBgm.volume = 0.3; battleBgm.currentTime = 1; battleBgm.play().catch(e => console.log(e));
+            battleBgm.volume = 0.3; battleBgm.currentTime = 1; 
+            battleBgm.play().catch(e => console.log("Audio Error:", e));
 
             const pSprite = playerShiny ? player.backShiny : player.back;
             const eSprite = enemyShiny ? enemy.frontShiny : enemy.front;
@@ -649,8 +643,11 @@
 
             const pImg = document.getElementById('player-img');
             const eImg = document.getElementById('enemy-img');
-            pImg.style.opacity = '0'; pImg.classList.remove('pop');
-            eImg.style.opacity = '0'; eImg.classList.remove('pop');
+            // Remove old classes
+            pImg.classList.remove('pop-p'); eImg.classList.remove('pop-e');
+            // Reset state
+            pImg.style.opacity = '0'; 
+            eImg.style.opacity = '0'; 
 
             const pBall = document.getElementById('player-ball');
             const eBall = document.getElementById('enemy-ball');
@@ -674,12 +671,14 @@
                 switchScreen('game-container');
                 document.getElementById('flash-overlay').style.opacity = '0';
                 document.getElementById('mute-btn').style.display = 'block';
-
                 setTimeout(() => {
                     pBall.style.display = 'none'; pBall.classList.remove('throw-p');
                     eBall.style.display = 'none'; eBall.classList.remove('throw-e');
-                    pImg.style.opacity = '1'; pImg.classList.add('pop');
-                    eImg.style.opacity = '1'; eImg.classList.add('pop');
+                    
+                    // Add new pop animation classes
+                    pImg.classList.add('pop-p');
+                    eImg.classList.add('pop-e');
+                    
                     if(playerShiny) triggerShinySparkles('player-pos');
                     if(enemyShiny) triggerShinySparkles('enemy-pos');
                     setTimeout(() => triggerEntryAbilities(player, enemy), 500);
@@ -689,7 +688,7 @@
 
         // --- NEW: ROBUST RESET FUNCTION ---
         function resetToSelect() {
-            // Safe Audio Reset
+            // Stop and Reset Audio Safely
             try {
                 battleBgm.pause(); battleBgm.currentTime = 0;
                 victoryBgm.pause(); victoryBgm.currentTime = 0;
@@ -697,22 +696,35 @@
                 welcomeBgm.play().catch(e => console.log("Audio Error Ignored:", e));
             } catch(e) { console.log("Audio reset skipped"); }
 
-            // State Reset
+            // Reset Game State
             finalPlayerMoves = null;
             finalEnemyMoves = null;
             tempSelectedMoves = [];
-            currentOffset = 0; // Reset scroll position
+            currentOffset = 0;
             selectionPhase = 'player';
             selectedPlayerIndex = null;
+            isShinyMode = false;
+            isMoveMode = false;
 
-            // UI Reset
+            // Reset UI Elements
             document.getElementById('moves-ui').style.display = 'grid';
             document.getElementById('reset-ui').style.display = 'none';
-            document.getElementById('move-modal').style.display = 'none'; // Force close modal
+            document.getElementById('move-modal').style.display = 'none';
             
+            // Checkboxes
+            document.getElementById('shiny-mode').checked = false;
+            document.getElementById('move-mode').checked = false;
+
             dialogueBox.textContent = "Choose a Pokémon to begin!";
             
-            goToSelect();
+            // Remove animation classes so they re-trigger next time
+            document.getElementById('player-img').classList.remove('pop-p');
+            document.getElementById('enemy-img').classList.remove('pop-e');
+            document.getElementById('player-ball').classList.remove('throw-p');
+            document.getElementById('enemy-ball').classList.remove('throw-e');
+
+            renderSelectionGrid(); // Re-render grid from top
+            switchScreen('select-screen');
         }
 
         // --- BATTLE LOGIC ---
@@ -740,8 +752,8 @@
             for(let i=0; i<6; i++) {
                 const star = document.createElement('div');
                 star.className = 'shiny-star sparkle-anim';
-                const tx = (Math.random() - 0.5) * 250 + "%";
-                const ty = (Math.random() - 0.5) * 250 + "%";
+                const tx = (Math.random() - 0.5) * 400 + "%"; // Wider spread for bigger mons
+                const ty = (Math.random() - 0.5) * 400 + "%";
                 star.style.setProperty('--tx', tx);
                 star.style.setProperty('--ty', ty);
                 container.appendChild(star);
@@ -861,8 +873,24 @@
         }
 
         // --- SIDEBAR UI LOGIC ---
-        document.addEventListener('keydown', (e) => { if (e.key === '0') toggleChat(); });
-        function toggleChat() { document.getElementById('chat-sidebar').classList.toggle('open'); }
+        document.addEventListener('keydown', (e) => { 
+            if (e.code === 'ShiftRight') { // Use 'code' for exact key
+                toggleChat(); 
+            }
+        });
+
+        function toggleChat() { 
+            const sidebar = document.getElementById('chat-sidebar');
+            const hint = document.getElementById('sidebar-hint');
+            
+            sidebar.classList.toggle('open');
+            
+            if(sidebar.classList.contains('open')) {
+                hint.classList.add('hidden');
+            } else {
+                hint.classList.remove('hidden');
+            }
+        }
         function fillChat(text) { document.getElementById('chat-input').value = text; document.getElementById('chat-input').focus(); }
         document.getElementById('chat-input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
