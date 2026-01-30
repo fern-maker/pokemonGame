@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Select Opponent</title>
+    <title>Pokémon Battle: Random Player</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -84,7 +84,6 @@
             z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
 
-        /* Random Card Special Style */
         .char-card.random-card {
             border-color: #ffd700;
             background: #222;
@@ -360,17 +359,15 @@
             const grid = document.getElementById('char-grid');
             grid.innerHTML = "";
 
-            // If choosing Enemy, Add Random Button First
-            if (selectionPhase === 'enemy') {
-                const randomCard = document.createElement('div');
-                randomCard.className = 'char-card random-card';
-                randomCard.innerHTML = `
-                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random">
-                    <p>Random</p>
-                `;
-                randomCard.onclick = () => handleSelection(-1); // -1 indicates random
-                grid.appendChild(randomCard);
-            }
+            // ALWAYS Add Random Button First
+            const randomCard = document.createElement('div');
+            randomCard.className = 'char-card random-card';
+            randomCard.innerHTML = `
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random">
+                <p>Random</p>
+            `;
+            randomCard.onclick = () => handleSelection(-1);
+            grid.appendChild(randomCard);
 
             // Render Standard Roster
             pokemonDB.forEach((p, index) => {
@@ -389,22 +386,24 @@
         function handleSelection(index) {
             if (selectionPhase === 'player') {
                 // Phase 1: Player Picked
-                selectedPlayerIndex = index;
+                let pIndex = index;
+                if (pIndex === -1) {
+                    pIndex = Math.floor(Math.random() * pokemonDB.length);
+                }
+                selectedPlayerIndex = pIndex; // Store resolved index
+
                 selectionPhase = 'enemy';
                 document.getElementById('select-title').innerText = "Choose Opponent";
-                renderSelectionGrid(); // Re-render to show Random button
+                renderSelectionGrid(); // Re-render (Random button still there)
             } else {
                 // Phase 2: Enemy Picked
-                let enemyIndex = index;
-                
-                // Handle Random Choice
-                if (enemyIndex === -1) {
-                    enemyIndex = Math.floor(Math.random() * pokemonDB.length);
-                    // Optional: Avoid mirror match on random? (Uncomment below)
-                    // while(enemyIndex === selectedPlayerIndex) { enemyIndex = Math.floor(Math.random() * pokemonDB.length); }
+                let eIndex = index;
+                if (eIndex === -1) {
+                    eIndex = Math.floor(Math.random() * pokemonDB.length);
+                    // Prevent mirror match on random? (Optional)
+                    // while(eIndex === selectedPlayerIndex) { eIndex = Math.floor(Math.random() * pokemonDB.length); }
                 }
-
-                startGame(selectedPlayerIndex, enemyIndex);
+                startGame(selectedPlayerIndex, eIndex);
             }
         }
 
