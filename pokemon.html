@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Battle: Kanto Fixed</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8f8f8;
+            --hp-green: #4caf50;
+            --hp-yellow: #ffeb3b;
+            --hp-red: #f44336;
+            --panel-bg: #2a2a2a;
+            --ui-border: 4px solid #555;
+            --pokemon-blue: #3b4cca;
+            --pokemon-yellow: #ffde00;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            margin: 0; padding: 0;
+            height: 100vh; width: 100vw;
+            overflow: hidden; user-select: none;
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; 
+            flex-direction: column; 
+            justify-content: center; align-items: center;
+        }
+        
+        .screen.active { display: flex; }
+
+        /* INTRO SCREEN */
+        #intro-screen {
+            background-color: #222;
+            background-image: radial-gradient(#333 15%, transparent 16%), radial-gradient(#333 15%, transparent 16%);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px;
+            z-index: 30; text-align: center;
+        }
+
+        .title-text {
+            color: var(--pokemon-yellow); text-shadow: 4px 4px 0px var(--pokemon-blue);
+            font-size: clamp(20px, 4vw, 50px); line-height: 1.5; margin-bottom: 50px;
+            animation: dropIn 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        #start-btn {
+            padding: 20px 40px; font-size: clamp(12px, 2vw, 24px);
+            background: transparent; color: white; border: none;
+            font-family: 'Press Start 2P', cursive; cursor: pointer;
+            animation: blink 1s infinite step-end;
+        }
+        #start-btn:hover { transform: scale(1.1); color: var(--pokemon-yellow); }
+
+        /* SELECTION SCREEN */
+        #select-screen {
+            background-color: #333; z-index: 20;
+            padding: 20px;
+        }
+        
+        h2 { color: white; margin-bottom: 20px; font-size: 16px; text-transform: uppercase; }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            /* FIX 1: Add padding so scaled items don't clip at edges */
+            padding: 15px; 
+        }
+
+        .char-card {
+            background: #444; border: 2px solid #666; border-radius: 8px;
+            cursor: pointer; text-align: center; padding: 10px;
+            transition: transform 0.2s, background 0.2s, z-index 0s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; /* Needed for z-index context */
+        }
+        
+        .char-card:hover {
+            transform: scale(1.1); 
+            background: #555; 
+            border-color: var(--pokemon-yellow);
+            /* FIX 2: Force hovered card to the top layer */
+            z-index: 100; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); /* Adds a nice pop-out shadow */
+        }
+
+        .char-card img { width: 60px; height: 60px; image-rendering: pixelated; }
+        .char-card p { color: white; font-size: 8px; margin-top: 5px; }
+
+        @media(max-width: 600px) {
+            .char-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* BATTLE SCREEN */
+        #game-container { 
+            z-index: 10; width: 100%; height: 100%;
+            justify-content: flex-start;
+        }
+
+        .battle-scene {
+            flex: 1;
+            width: 100%;
+            background: linear-gradient(to bottom, #8fabdc 60%, #68a75e 60%);
+            position: relative; overflow: hidden;
+        }
+        
+        /* Layout */
+        .sprite-image {
+            width: 25vw; max-width: 350px; min-width: 150px;
+            image-rendering: pixelated; position: absolute; z-index: 2;
+        }
+        .platform {
+            width: 35vw; max-width: 450px; height: 10vh;
+            background-color: #e0eec0; border-radius: 50%;
+            position: absolute; border: 3px solid #6b8c42;
+            opacity: 0.6; transform: scaleY(0.4); z-index: 1;
+        }
+
+        .opponent-area { position: absolute; top: 15%; right: 10%; width: 40%; height: 40%; }
+        #enemy-img { bottom: 20%; right: 10%; }
+        .opponent-platform { bottom: 10%; right: 0; }
+        .opponent-status {
+            position: absolute; top: 5%; left: 5%;
+            background: rgba(255,255,255,0.9); border: var(--ui-border);
+            border-radius: 8px; padding: 1.5vw; min-width: 250px;
+        }
+
+        .player-area { position: absolute; bottom: 0; left: 10%; width: 40%; height: 45%; }
+        #player-img { bottom: 10%; left: 5%; }
+        .player-platform { bottom: 5%; left: -10%; }
+        .player-status {
+            position: absolute; bottom: 40%; right: -60%;
+            background: rgba(255,255,255,0.9); border: var(--ui-border);
+            border-radius: 8px; padding: 1.5vw; min-width: 250px;
+        }
+
+        @media (max-width: 768px) {
+            .player-status { right: -10%; bottom: 110%; }
+            .opponent-area { top: 10%; right: 5%; }
+            .player-area { left: 5%; bottom: 5%; }
+        }
+
+        /* HUD */
+        .hp-bar-bg {
+            width: 100%; height: 15px; background-color: #ddd;
+            margin-top: 8px; border: 2px solid #333; border-radius: 8px; overflow: hidden;
+        }
+        .hp-bar-fill {
+            height: 100%; width: 100%; background-color: var(--hp-green);
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+        .info-text {
+            font-size: clamp(10px, 1.5vw, 16px); margin-bottom: 5px;
+            display: flex; justify-content: space-between;
+        }
+        .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; }
+
+        /* Controls */
+        .control-panel {
+            height: 30vh;
+            width: 100%;
+            background-color: var(--panel-bg);
+            border-top: var(--ui-border); padding: 20px; color: white;
+            display: flex; gap: 20px; align-items: center;
+        }
+        #dialogue-box {
+            flex: 2; background-color: white; color: black; border: var(--ui-border);
+            border-radius: 8px; padding: 20px; height: 100%;
+            font-size: clamp(12px, 2vw, 20px); line-height: 1.6; display: flex; align-items: center;
+        }
+        .moves-container {
+            flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%;
+        }
+        button.move-btn {
+            background-color: #f0f0f0; border: 4px solid #666; border-radius: 8px;
+            font-family: 'Press Start 2P', cursive; font-size: clamp(10px, 1.2vw, 14px);
+            cursor: pointer; text-transform: uppercase; color: #333; transition: transform 0.1s;
+        }
+        button.move-btn:hover:not(:disabled) { background-color: #fff; transform: translateY(-2px); }
+        button.move-btn:disabled { opacity: 0.5; cursor: not-allowed; background-color: #555; }
+        
+        .reset-btn { display: none; width: 100%; background-color: #ffcc00; border-color: #bfa100; height: 100%; font-size: 20px; cursor: pointer; font-family: 'Press Start 2P'; border-width: 4px;}
+        
+        #mute-btn { position: fixed; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.5); color: white; border: 2px solid white; padding: 5px 10px; cursor: pointer; font-family: sans-serif; font-size: 12px; display: none; }
+        
+        #flash-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; opacity: 0; pointer-events: none; z-index: 9998;
+            transition: opacity 0.1s;
+        }
+
+        /* Animations */
+        @keyframes dropIn { 0% { opacity: 0; transform: translateY(-100px) scale(0.5); } 70% { opacity: 1; transform: translateY(10px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes shake { 0%, 100% { transform: translate(0, 0); filter: none;} 20% { transform: translate(-15px, 0); filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 40% { transform: translate(15px, 0); } 60% { transform: translate(-15px, 0); } 80% { transform: translate(15px, 0); } }
+        @keyframes attack-lunge { 0% { transform: translate(0,0); } 50% { transform: translate(50px, -50px) scale(1.1); } 100% { transform: translate(0,0); } }
+        @keyframes attack-lunge-enemy { 0% { transform: translate(0,0); } 50% { transform: translate(-50px, 50px) scale(1.1); } 100% { transform: translate(0,0); } }
+
+        .shake { animation: shake 0.5s; }
+        .lunge { animation: attack-lunge 0.3s; }
+        .lunge-enemy { animation: attack-lunge-enemy 0.3s; }
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen" class="screen active">
+        <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
+        <p style="color: white; font-size: 10px; margin-bottom: 50px;">KANTO EDITION</p>
+        <button id="start-btn" onclick="goToSelect()">PRESS START</button>
+    </div>
+
+    <div id="select-screen" class="screen">
+        <h2>Choose Your Pokémon</h2>
+        <div class="char-grid" id="char-grid"></div>
+    </div>
+
+    <div id="game-container" class="screen">
+        <div class="battle-scene">
+            <div class="opponent-area">
+                <div class="platform opponent-platform"></div>
+                <img src="" alt="Enemy" class="sprite-image" id="enemy-img">
+                <div class="opponent-status">
+                    <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
+                    <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
+                    <div class="type-label" id="enemy-type">???</div>
+                </div>
+            </div>
+
+            <div class="player-area">
+                <div class="platform player-platform"></div>
+                <img src="" alt="Player" class="sprite-image" id="player-img">
+                <div class="player-status">
+                    <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
+                    <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
+                    <div class="info-text" style="margin-top: 5px; justify-content: flex-end;"> <span id="player-hp-text">100/100</span> </div>
+                    <div class="type-label" id="player-type" style="text-align: right;">???</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div id="dialogue-box">Choose a Pokémon to begin!</div>
+            <div class="moves-container" id="moves-ui">
+                </div>
+            <div class="moves-container" id="reset-ui" style="display:none; grid-template-columns: 1fr;">
+                <button class="reset-btn" id="reset-btn" onclick="resetToSelect()" style="display:block;">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="flash-overlay"></div>
+    <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
+
+    <audio id="bgm" loop crossorigin="anonymous">
+        <source src="https://raw.githubusercontent.com/Jaysmito101/Pokemon-Battle/master/assets/music/battle.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // --- DATA DATABASE ---
+        const pokemonDB = [
+            {
+                id: 3, name: "Venusaur", types: ["Grass", "Poison"], hp: 160,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png",
+                moves: [{name: "Solar Beam", power: 60, type: "Grass"}, {name: "Sludge Bomb", power: 45, type: "Poison"}, {name: "Tackle", power: 20, type: "Normal"}, {name: "Synthesis", power: -50, type: "heal"}]
+            },
+            {
+                id: 6, name: "Charizard", types: ["Fire", "Flying"], hp: 160,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png",
+                moves: [{name: "Flamethrower", power: 50, type: "Fire"}, {name: "Air Slash", power: 40, type: "Flying"}, {name: "Dragon Claw", power: 30, type: "Dragon"}, {name: "Roost", power: -50, type: "heal"}]
+            },
+            {
+                id: 9, name: "Blastoise", types: ["Water"], hp: 170,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png",
+                moves: [{name: "Hydro Pump", power: 60, type: "Water"}, {name: "Ice Beam", power: 45, type: "Ice"}, {name: "Bite", power: 25, type: "Dark"}, {name: "Iron Defense", power: -50, type: "heal"}]
+            },
+            {
+                id: 25, name: "Pikachu", types: ["Electric"], hp: 120,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png",
+                moves: [{name: "Thunderbolt", power: 50, type: "Electric"}, {name: "Quick Attack", power: 20, type: "Normal"}, {name: "Iron Tail", power: 30, type: "Steel"}, {name: "Potion", power: -50, type: "heal"}]
+            },
+            {
+                id: 68, name: "Machamp", types: ["Fighting"], hp: 180,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png",
+                moves: [{name: "Cross Chop", power: 50, type: "Fighting"}, {name: "Rock Slide", power: 30, type: "Rock"}, {name: "Strength", power: 35, type: "Normal"}, {name: "Bulk Up", power: -40, type: "heal"}]
+            },
+            {
+                id: 94, name: "Gengar", types: ["Ghost", "Poison"], hp: 130,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png",
+                moves: [{name: "Shadow Ball", power: 50, type: "Ghost"}, {name: "Sludge Bomb", power: 45, type: "Poison"}, {name: "Psychic", power: 40, type: "Psychic"}, {name: "Hypnosis", power: -40, type: "heal"}]
+            },
+            {
+                id: 130, name: "Gyarados", types: ["Water", "Flying"], hp: 180,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png",
+                moves: [{name: "Hydro Pump", power: 60, type: "Water"}, {name: "Bite", power: 30, type: "Dark"}, {name: "Dragon Rage", power: 40, type: "Dragon"}, {name: "Splash", power: -10, type: "heal"}]
+            },
+            {
+                id: 143, name: "Snorlax", types: ["Normal"], hp: 250,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png",
+                moves: [{name: "Body Slam", power: 50, type: "Normal"}, {name: "Earthquake", power: 45, type: "Ground"}, {name: "Crunch", power: 30, type: "Dark"}, {name: "Rest", power: -100, type: "heal"}]
+            },
+            {
+                id: 149, name: "Dragonite", types: ["Dragon", "Flying"], hp: 190,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png",
+                moves: [{name: "Outrage", power: 60, type: "Dragon"}, {name: "Wing Attack", power: 40, type: "Flying"}, {name: "Thunder Punch", power: 30, type: "Electric"}, {name: "Roost", power: -50, type: "heal"}]
+            },
+            {
+                id: 150, name: "Mewtwo", types: ["Psychic"], hp: 180,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png",
+                moves: [{name: "Psystrike", power: 65, type: "Psychic"}, {name: "Shadow Ball", power: 40, type: "Ghost"}, {name: "Aura Sphere", power: 40, type: "Fighting"}, {name: "Recover", power: -60, type: "heal"}]
+            },
+            {
+                id: 59, name: "Arcanine", types: ["Fire"], hp: 160,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png",
+                moves: [{name: "Flare Blitz", power: 60, type: "Fire"}, {name: "Thunder Fang", power: 30, type: "Electric"}, {name: "Extreme Speed", power: 40, type: "Normal"}, {name: "Morning Sun", power: -50, type: "heal"}]
+            },
+            {
+                id: 76, name: "Golem", types: ["Rock", "Ground"], hp: 160,
+                front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png",
+                back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png",
+                moves: [{name: "Earthquake", power: 50, type: "Ground"}, {name: "Rock Throw", power: 30, type: "Rock"}, {name: "Double Edge", power: 40, type: "Normal"}, {name: "Defense Curl", power: -30, type: "heal"}]
+            }
+        ];
+
+        // --- TYPE CHART (Standard) ---
+        const TYPE_CHART = {
+            normal:   { rock: 0.5, ghost: 0, steel: 0.5 },
+            fire:     { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
+            water:    { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
+            electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 },
+            grass:    { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 },
+            ice:      { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 },
+            fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 },
+            poison:   { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0 },
+            ground:   { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 },
+            flying:   { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 },
+            psychic:  { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 },
+            bug:      { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 },
+            rock:     { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 },
+            ghost:    { psychic: 2, ghost: 2, dark: 0.5, normal: 0 },
+            dragon:   { dragon: 2, steel: 0.5, fairy: 0 },
+            steel:    { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 },
+            dark:     { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }
+        };
+
+        // --- GAME VARIABLES ---
+        let player = {};
+        let enemy = {};
+        let isPlayerTurn = true;
+        const bgm = document.getElementById('bgm');
+        const dialogueBox = document.getElementById('dialogue-box');
+
+        // --- NAVIGATION ---
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function goToSelect() {
+            // Populate Grid
+            const grid = document.getElementById('char-grid');
+            grid.innerHTML = "";
+            pokemonDB.forEach((p, index) => {
+                const card = document.createElement('div');
+                card.className = 'char-card';
+                card.innerHTML = `
+                    <img src="${p.front}" alt="${p.name}">
+                    <p>${p.name}</p>
+                `;
+                card.onclick = () => startGame(index);
+                grid.appendChild(card);
+            });
+            switchScreen('select-screen');
+            
+            // Try to start music on interaction
+            if(bgm.paused) { bgm.volume=0.3; bgm.play().catch(e=>console.log(e)); }
+        }
+
+        function resetToSelect() {
+            goToSelect();
+            document.getElementById('moves-ui').style.display = 'grid';
+            document.getElementById('reset-ui').style.display = 'none';
+        }
+
+        function startGame(playerIndex) {
+            // 1. Setup Player
+            const pData = pokemonDB[playerIndex];
+            player = JSON.parse(JSON.stringify(pData)); // Deep copy
+            player.currHp = player.hp;
+            player.maxHp = player.hp;
+            
+            // 2. Setup Enemy (Random, but different from player if possible)
+            let enemyIndex = Math.floor(Math.random() * pokemonDB.length);
+            while(enemyIndex === playerIndex) {
+                 enemyIndex = Math.floor(Math.random() * pokemonDB.length);
+            }
+            const eData = pokemonDB[enemyIndex];
+            enemy = JSON.parse(JSON.stringify(eData));
+            enemy.currHp = enemy.hp;
+            enemy.maxHp = enemy.hp;
+
+            // 3. Render Battle UI
+            document.getElementById('player-img').src = player.back;
+            document.getElementById('player-name').textContent = player.name;
+            document.getElementById('player-type').textContent = player.types.join(" / ");
+            updateHealthUI(player, 'player');
+
+            document.getElementById('enemy-img').src = enemy.front;
+            document.getElementById('enemy-img').style.opacity = "1";
+            document.getElementById('enemy-name').textContent = enemy.name;
+            document.getElementById('enemy-type').textContent = enemy.types.join(" / ");
+            updateHealthUI(enemy, 'enemy');
+
+            // 4. Render Moves
+            const movesContainer = document.getElementById('moves-ui');
+            movesContainer.innerHTML = "";
+            player.moves.forEach((move, i) => {
+                const btn = document.createElement('button');
+                btn.className = "move-btn";
+                btn.textContent = move.name;
+                btn.onclick = () => playerAttack(i);
+                movesContainer.appendChild(btn);
+            });
+
+            // 5. Transition
+            isPlayerTurn = true;
+            document.getElementById('flash-overlay').style.opacity = '1';
+            dialogueBox.textContent = `A wild ${enemy.name} appeared!`;
+            
+            setTimeout(() => {
+                switchScreen('game-container');
+                document.getElementById('flash-overlay').style.opacity = '0';
+                document.getElementById('mute-btn').style.display = 'block';
+            }, 200);
+        }
+
+        // --- BATTLE LOGIC ---
+
+        function playerAttack(moveIndex) {
+            if (!isPlayerTurn) return;
+            isPlayerTurn = false;
+            disableButtons(true);
+            
+            executeMove(player, enemy, player.moves[moveIndex], 'player', () => {
+                if (enemy.currHp > 0) setTimeout(enemyTurn, 1000);
+            });
+        }
+
+        function enemyTurn() {
+            const move = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
+            executeMove(enemy, player, move, 'enemy', () => {
+                if (player.currHp > 0) {
+                    isPlayerTurn = true;
+                    typeWriter(`What will ${player.name} do?`);
+                    disableButtons(false);
+                }
+            });
+        }
+
+        function executeMove(attacker, defender, move, role, callback) {
+            const attackerSprite = document.getElementById(`${role}-img`);
+            const defenderSprite = document.getElementById(role === 'player' ? 'enemy-img' : 'player-img');
+
+            typeWriter(`${attacker.name} used ${move.name}!`, () => {
+                
+                // Animation
+                const anim = role === 'player' ? 'lunge' : 'lunge-enemy';
+                attackerSprite.classList.add(anim);
+                setTimeout(() => attackerSprite.classList.remove(anim), 300);
+
+                setTimeout(() => {
+                    if (move.type === 'heal') {
+                        // Healing
+                        const healAmount = Math.abs(move.power);
+                        attacker.currHp = Math.min(attacker.maxHp, attacker.currHp + healAmount);
+                        updateHealthUI(attacker, role);
+                        typeWriter(`${attacker.name} recovered HP!`, callback);
+                    } else {
+                        // Damage Calculation
+                        let multiplier = 1.0;
+                        defender.types.forEach(t => {
+                            const map = TYPE_CHART[move.type.toLowerCase()];
+                            if (map && map[t.toLowerCase()] !== undefined) {
+                                multiplier *= map[t.toLowerCase()];
+                            }
+                        });
+
+                        let damage = Math.floor(move.power * multiplier * (0.85 + Math.random() * 0.15));
+                        const isCrit = Math.random() < 0.1;
+                        if(isCrit) damage = Math.floor(damage * 1.5);
+
+                        // Apply Damage
+                        defender.currHp = Math.max(0, defender.currHp - damage);
+                        updateHealthUI(defender, role === 'player' ? 'enemy' : 'player');
+                        
+                        // Hit Anim
+                        defenderSprite.classList.add('shake');
+                        setTimeout(() => defenderSprite.classList.remove('shake'), 500);
+
+                        // Text Feedback
+                        setTimeout(() => {
+                            let msg = "";
+                            if(multiplier > 1) msg = "It's super effective!";
+                            else if(multiplier === 0) msg = "It had no effect...";
+                            else if(multiplier < 1) msg = "It's not very effective...";
+                            
+                            if(isCrit) msg += (msg ? " " : "") + "Critical hit!";
+                            
+                            if(msg) typeWriter(msg, () => checkFaint(defender, callback));
+                            else checkFaint(defender, callback);
+                        }, 600);
+                    }
+                }, 500);
+            });
+        }
+
+        function checkFaint(char, cb) {
+            if (char.currHp <= 0) {
+                const sprite = document.getElementById(char === player ? 'player-img' : 'enemy-img');
+                typeWriter(`${char.name} fainted!`, () => {
+                    sprite.style.opacity = '0';
+                    if (char === player) typeWriter("You lost...", showReset);
+                    else typeWriter("You won!", showReset);
+                });
+            } else {
+                cb();
+            }
+        }
+
+        // --- UTILS ---
+        function updateHealthUI(char, role) {
+            const bar = document.getElementById(`${role}-hp-bar`);
+            const pct = (char.currHp / char.maxHp) * 100;
+            bar.style.width = pct + "%";
+            if(pct > 50) bar.style.backgroundColor = "#4caf50";
+            else if(pct > 20) bar.style.backgroundColor = "#ffeb3b";
+            else bar.style.backgroundColor = "#f44336";
+
+            if(role === 'player') {
+                document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
+            }
+        }
+
+        function typeWriter(text, cb) {
+            dialogueBox.textContent = "";
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    dialogueBox.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, 20);
+                } else if (cb) {
+                    setTimeout(cb, 500);
+                }
+            }
+            type();
+        }
+
+        function disableButtons(disabled) {
+            document.querySelectorAll('.move-btn').forEach(b => b.disabled = disabled);
+        }
+
+        function showReset() {
+            document.getElementById('moves-ui').style.display = 'none';
+            document.getElementById('reset-ui').style.display = 'grid';
+        }
+
+        function toggleMute() {
+            const btn = document.getElementById('mute-btn');
+            if (bgm.paused) { bgm.play(); btn.textContent = "🔊 Mute"; }
+            else { bgm.pause(); btn.textContent = "🔇 Unmute"; }
+        }
+    </script>
+</body>
+</html>
