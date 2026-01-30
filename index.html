@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Full Kanto Dex</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Pokémon Battle: Final Fix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #f8f8f8;
@@ -25,180 +25,144 @@
             margin: 0; padding: 0;
             height: 100vh; width: 100vw;
             overflow: hidden; user-select: none;
+            display: flex;
+        }
+
+        /* --- APP CONTAINER --- */
+        #app-container {
+            flex: 1; height: 100%; position: relative;
+            transition: width 0.3s ease;
+            display: flex; flex-direction: column;
+            overflow: hidden;
         }
 
         /* --- SCREENS --- */
         .screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; 
-            flex-direction: column; 
-            justify-content: center; align-items: center;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
         }
-        
         .screen.active { display: flex; }
 
-        /* INTRO & LOADING */
+        /* INTRO */
         #intro-screen {
             background-color: #222;
             background-image: radial-gradient(#333 15%, transparent 16%), radial-gradient(#333 15%, transparent 16%);
             background-size: 20px 20px; background-position: 0 0, 10px 10px;
             z-index: 30; text-align: center;
         }
-
         .title-text {
             color: var(--pokemon-yellow); text-shadow: 4px 4px 0px var(--pokemon-blue);
             font-size: clamp(20px, 4vw, 50px); line-height: 1.5; margin-bottom: 30px;
             animation: dropIn 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-
-        #loading-container {
-            width: 300px;
-            text-align: center;
-        }
-
-        #loading-bar-bg {
-            width: 100%; height: 20px; border: 2px solid white; padding: 2px; margin-top: 10px;
-        }
-        
-        #loading-bar-fill {
-            width: 0%; height: 100%; background-color: var(--pokemon-blue);
-            transition: width 0.1s;
-        }
-
+        #loading-container { width: 300px; text-align: center; }
+        #loading-bar-bg { width: 100%; height: 20px; border: 2px solid white; padding: 2px; margin-top: 10px; }
+        #loading-bar-fill { width: 0%; height: 100%; background-color: var(--pokemon-blue); transition: width 0.1s; }
         #start-btn {
             padding: 20px 40px; font-size: clamp(12px, 2vw, 24px);
             background: transparent; color: white; border: none;
             font-family: 'Press Start 2P', cursive; cursor: pointer;
-            animation: blink 1s infinite step-end;
-            display: none; /* Hidden until loaded */
+            animation: blink 1s infinite step-end; display: none; 
         }
         #start-btn:hover { transform: scale(1.1); color: var(--pokemon-yellow); }
 
-        /* SELECTION SCREEN */
+        /* SELECTION */
         #select-screen { background-color: #333; z-index: 20; padding: 20px; }
-        
-        .select-header {
-            display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 800px;
-        }
-
+        .select-header { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 800px; }
         h2 { color: white; font-size: 16px; text-transform: uppercase; margin: 0; text-align: center; line-height: 1.5; }
+        .search-container { display: flex; width: 100%; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;}
+        #search-bar { flex: 1; padding: 10px; font-family: 'Press Start 2P', cursive; background: #222; border: 2px solid #555; color: white; font-size: 10px; min-width: 200px;}
 
-        #search-bar {
-            padding: 10px; width: 100%; font-family: 'Press Start 2P', cursive;
-            background: #222; border: 2px solid #555; color: white; font-size: 10px;
-        }
+        /* TOGGLES */
+        .toggle-label { display: flex; align-items: center; gap: 5px; color: white; font-size: 8px; cursor: pointer; }
+        .toggle-label input { display: none; }
+        .toggle-box { width: 16px; height: 16px; border: 2px solid #555; background: #222; display: flex; align-items: center; justify-content: center; }
+        .toggle-label input:checked + .toggle-box { background: var(--pokemon-yellow); border-color: var(--pokemon-yellow); }
+        .toggle-label input:checked + .toggle-box::after { content: ''; width: 8px; height: 8px; background: black; }
+        #shiny-mode:checked + .toggle-box::after { content: '★'; background: none; font-size: 12px; }
 
         .char-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
-            max-width: 900px; width: 95%; height: 70vh; overflow-y: auto; padding: 15px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px;
+            max-width: 900px; width: 95%; height: 60vh; overflow-y: auto; padding: 15px;
             border: 2px solid #444; background: #222;
         }
-
         .char-card {
             background: #444; border: 2px solid #666; border-radius: 8px;
-            cursor: pointer; text-align: center; padding: 10px;
+            cursor: pointer; text-align: center; padding: 5px;
             transition: transform 0.1s, background 0.2s, z-index 0s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative; min-height: 110px;
+            position: relative; min-height: 100px;
         }
-        
-        .char-card:hover {
-            transform: scale(1.1); background: #555; border-color: var(--pokemon-yellow);
-            z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.8);
-        }
-
+        .char-card:hover { transform: scale(1.1); background: #555; border-color: var(--pokemon-yellow); z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.8); }
         .char-card.random-card { border-color: #ffd700; background: #2a2a2a; }
         .char-card.random-card p { color: #ffd700; }
-
-        .char-card img { width: 70px; height: 70px; image-rendering: pixelated; }
-        .char-card p { color: white; font-size: 7px; margin-top: 5px; line-height: 1.2; text-transform: capitalize;}
+        .char-card img { width: 60px; height: 60px; image-rendering: pixelated; }
+        .char-card p { color: white; font-size: 6px; margin-top: 5px; line-height: 1.2; text-transform: capitalize; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%;}
         
-        .stat-preview { font-size: 5px; color: #aaa; margin-top: 4px; display: none; width: 100%; justify-content: space-around;}
-        .char-card:hover .stat-preview { display: flex; }
+        #data-loading {
+            position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8);
+            display:none; justify-content:center; align-items:center; z-index: 50; color:white; font-size:12px;
+        }
 
-        /* BATTLE SCREEN */
+        /* MODAL */
+        #move-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 60; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #333; border: 4px solid #555; padding: 20px;
+            width: 90%; max-width: 600px; max-height: 80vh;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .move-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow-y: auto; max-height: 50vh; padding: 5px; }
+        .move-option {
+            background: #444; border: 2px solid #666; padding: 10px; cursor: pointer; color: white; font-size: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .move-option:hover { background: #555; }
+        .move-option.selected { border-color: var(--pokemon-yellow); background: #2a2a2a; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        .action-btn { padding: 10px 20px; font-family: 'Press Start 2P'; cursor: pointer; background: #4caf50; color: white; border: none; font-size: 10px; }
+        .action-btn:disabled { background: #555; cursor: not-allowed; }
+
+        /* BATTLE */
         #game-container { z-index: 10; width: 100%; height: 100%; justify-content: flex-start; }
-
-        .battle-scene {
-            flex: 1; width: 100%; position: relative; overflow: hidden;
-            background: linear-gradient(to bottom, #64b0ff 0%, #a0d8ef 55%, #70c070 55%, #4a804a 100%);
-        }
-
-        /* HUD */
-        .hud {
-            position: absolute; background: rgba(248, 248, 248, 0.95);
-            border: 4px solid #444; border-radius: 12px; padding: 15px; width: 320px; max-width: 45%;
-            z-index: 10; box-shadow: 5px 5px 0 rgba(0,0,0,0.2); border-bottom-right-radius: 25px; 
-        }
+        .battle-scene { flex: 1; width: 100%; position: relative; overflow: hidden; background: linear-gradient(to bottom, #64b0ff 0%, #a0d8ef 55%, #70c070 55%, #4a804a 100%); }
+        .hud { position: absolute; background: rgba(248, 248, 248, 0.95); border: 4px solid #444; border-radius: 12px; padding: 15px; width: 320px; max-width: 45%; z-index: 10; border-bottom-right-radius: 25px; }
         #enemy-hud { top: 40px; left: 40px; }
         #player-hud { bottom: 40px; right: 40px; }
-
-        .hp-bar-bg {
-            width: 100%; height: 12px; background-color: #ddd; margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden;
-        }
-        .hp-bar-fill {
-            height: 100%; width: 100%; background-color: var(--hp-green); transition: width 0.5s ease, background-color 0.5s ease;
-        }
-        .info-text {
-            font-size: clamp(10px, 1.2vw, 14px); margin-bottom: 5px; display: flex; justify-content: space-between; color: #333; text-transform: capitalize;
-        }
-        .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; color: #333;}
-
-        /* SPRITES */
-        .sprite-container {
-            position: absolute; z-index: 5; display: flex; justify-content: center; align-items: flex-end;
-        }
+        .hp-bar-bg { width: 100%; height: 12px; background-color: #ddd; margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden; }
+        .hp-bar-fill { height: 100%; width: 100%; background-color: var(--hp-green); transition: width 0.5s ease, background-color 0.5s ease; }
+        .info-text { font-size: clamp(10px, 1.2vw, 14px); margin-bottom: 5px; display: flex; justify-content: space-between; color: #333; text-transform: capitalize; }
+        .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; color: #333; display:flex; justify-content: space-between;}
+        .ability-badge { color: #555; font-weight: bold; font-size: 7px; background: #ddd; padding: 2px 4px; border-radius: 4px; border: 1px solid #999; }
+        .sprite-container { position: absolute; z-index: 5; display: flex; justify-content: center; align-items: flex-end; }
         #enemy-pos { top: 15%; right: 15%; width: 250px; height: 250px; }
         #player-pos { bottom: 8%; left: 10%; width: 250px; height: 250px; }
-
-        .sprite-image {
-            width: 100%; image-rendering: pixelated; position: relative; z-index: 2;
-            filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4));
-        }
-
-        .platform {
-            width: 80%; height: 30%; background-color: #e0eec0; border: 4px solid #6b8c42;
-            border-radius: 50%; position: absolute; bottom: 20px; left: 10%;    
-            opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 600px) {
-            #enemy-hud { top: 10px; left: 10px; width: 200px; padding: 8px; }
-            #player-hud { bottom: 10px; right: 10px; width: 200px; padding: 8px; }
-            #enemy-pos { top: 15%; right: 5%; width: 150px; }
-            #player-pos { bottom: 5%; left: 5%; width: 150px; }
-            .platform { bottom: 10px; }
-        }
-
-        /* CONTROLS */
-        .control-panel {
-            height: 30vh; width: 100%; background-color: var(--panel-bg);
-            border-top: var(--ui-border); padding: 20px; color: white;
-            display: flex; gap: 20px; align-items: center;
-        }
-        #dialogue-box {
-            flex: 2; background-color: white; color: black; border: var(--ui-border);
-            border-radius: 8px; padding: 20px; height: 100%;
-            font-size: clamp(10px, 1.5vw, 18px); line-height: 1.6; display: flex; align-items: center;
-        }
+        .sprite-image { width: 100%; image-rendering: pixelated; position: relative; z-index: 2; filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); opacity: 0; }
+        .platform { width: 80%; height: 30%; background-color: #e0eec0; border: 4px solid #6b8c42; border-radius: 50%; position: absolute; bottom: 20px; left: 10%; opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1); }
+        .pokeball-sprite { width: 30px; height: 30px; position: absolute; z-index: 20; display: none; background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'); background-size: contain; background-repeat: no-repeat; }
+        #player-ball { bottom: 50px; left: -50px; }
+        #enemy-ball { top: 50px; right: -50px; }
+        .shiny-star { position: absolute; width: 25px; height: 25px; background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); z-index: 30; opacity: 0; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        @keyframes sparkle-burst { 0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(180deg); opacity: 0; } }
+        .sparkle-anim { animation: sparkle-burst 0.8s ease-out forwards; }
+        @keyframes throwPlayer { 0% { left: -50px; bottom: 50px; transform: rotate(0deg); } 100% { left: 120px; bottom: 100px; transform: rotate(720deg); } }
+        @keyframes throwEnemy { 0% { right: -50px; top: 50px; transform: rotate(0deg); } 100% { right: 120px; top: 120px; transform: rotate(-720deg); } }
+        @keyframes popOut { 0% { transform: scale(0); filter: brightness(10); opacity: 0; } 40% { transform: scale(1.2); filter: brightness(5); opacity: 1; } 100% { transform: scale(1); filter: brightness(1); opacity: 1; } }
+        .throw-p { animation: throwPlayer 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .throw-e { animation: throwEnemy 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .pop { animation: popOut 0.5s ease-out forwards; }
+        .control-panel { height: 30vh; width: 100%; background-color: var(--panel-bg); border-top: var(--ui-border); padding: 20px; color: white; display: flex; gap: 20px; align-items: center; }
+        #dialogue-box { flex: 2; background-color: white; color: black; border: var(--ui-border); border-radius: 8px; padding: 20px; height: 100%; font-size: clamp(10px, 1.5vw, 18px); line-height: 1.6; display: flex; align-items: center; }
         .moves-container { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
-        button.move-btn {
-            background-color: #f0f0f0; border: 4px solid #666; border-radius: 8px;
-            font-family: 'Press Start 2P', cursive; font-size: clamp(8px, 1vw, 12px);
-            cursor: pointer; text-transform: uppercase; color: #333; transition: transform 0.1s;
-        }
+        button.move-btn { background-color: #f0f0f0; border: 4px solid #666; border-radius: 8px; font-family: 'Press Start 2P', cursive; font-size: clamp(8px, 1vw, 12px); cursor: pointer; text-transform: uppercase; color: #333; transition: transform 0.1s; }
         button.move-btn:hover:not(:disabled) { background-color: #fff; transform: translateY(-2px); }
         button.move-btn:disabled { opacity: 0.5; cursor: not-allowed; background-color: #555; }
         .reset-btn { display: none; width: 100%; background-color: #ffcc00; border-color: #bfa100; height: 100%; font-size: 20px; cursor: pointer; font-family: 'Press Start 2P'; border-width: 4px;}
-        
         #mute-btn { position: fixed; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.5); color: white; border: 2px solid white; padding: 5px 10px; cursor: pointer; font-family: sans-serif; font-size: 12px; display: none; }
-        #flash-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; opacity: 0; pointer-events: none; z-index: 9998;
-            transition: opacity 0.1s;
-        }
-
-        /* Animations */
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 9998; transition: opacity 0.1s; }
         @keyframes dropIn { 0% { opacity: 0; transform: translateY(-100px) scale(0.5); } 70% { opacity: 1; transform: translateY(10px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         @keyframes shake { 0%, 100% { transform: translate(0, 0); filter: none;} 20% { transform: translate(-15px, 0); filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 40% { transform: translate(15px, 0); } 60% { transform: translate(-15px, 0); } 80% { transform: translate(15px, 0); } }
@@ -208,405 +172,490 @@
         .lunge { animation: attack-lunge 0.3s; }
         .lunge-enemy { animation: attack-lunge-enemy 0.3s; }
 
+        /* --- ASSISTANT SIDEBAR --- */
+        #chat-sidebar {
+            width: 0; background: #fff; height: 100%;
+            transition: width 0.3s ease; display: flex; flex-direction: column;
+            border-left: 2px solid #ddd; overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+        }
+        #chat-sidebar.open { width: 350px; }
+        .chat-header { padding: 15px; border-bottom: 1px solid #eee; background: white; font-weight: 500; font-size: 16px; color: #3b4cca; display: flex; align-items: center; justify-content: space-between; }
+        .chat-body { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 15px; }
+        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+        .chat-msg.bot { background: #e8f0fe; color: #1a73e8; border-bottom-left-radius: 2px; align-self: flex-start; }
+        .chat-msg.user { background: #3b4cca; color: white; border-bottom-right-radius: 2px; align-self: flex-end; }
+        .chat-input-area { padding: 15px; border-top: 1px solid #eee; background: white; }
+        .chat-input-wrapper { background: #f1f3f4; border-radius: 24px; padding: 10px 15px; display: flex; align-items: center; }
+        #chat-input { border: none; background: transparent; width: 100%; outline: none; font-size: 14px; font-family: 'Roboto', sans-serif; }
+        .pill-container { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .pill { background: #e8f0fe; color: #1a73e8; padding: 6px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; border: 1px solid #d2e3fc; transition: background 0.2s; }
+        .pill:hover { background: #d2e3fc; }
+        .dt-card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .dt-title { font-weight: bold; margin-bottom: 5px; color: #333; text-transform: capitalize; }
+        .dt-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #666; }
+
     </style>
 </head>
 <body>
 
-    <div id="intro-screen" class="screen active">
-        <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
-        <div id="loading-container">
-            <p style="color: white; font-size: 10px;">CATCHING KANTO POKÉMON...</p>
-            <div id="loading-bar-bg">
-                <div id="loading-bar-fill"></div>
+    <div id="app-container">
+        
+        <div id="intro-screen" class="screen active">
+            <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
+            <div id="loading-container">
+                <p style="color: white; font-size: 10px;">CATCHING ALL POKÉMON...</p>
+                <div id="loading-bar-bg">
+                    <div id="loading-bar-fill"></div>
+                </div>
+                <p id="loading-text" style="color: #aaa; font-size: 8px; margin-top: 10px;">0 / 1000+</p>
             </div>
-            <p id="loading-text" style="color: #aaa; font-size: 8px; margin-top: 10px;">0 / 151</p>
+            <button id="start-btn" onclick="startExperience()">PRESS START</button>
         </div>
-        <button id="start-btn" onclick="startExperience()">PRESS START</button>
+
+        <div id="select-screen" class="screen">
+            <div class="select-header">
+                <h2 id="select-title">Choose Your Pokémon</h2>
+                <div class="search-container">
+                    <input type="text" id="search-bar" placeholder="SEARCH POKEMON..." onkeyup="filterGrid()">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="shiny-mode" onchange="toggleShinyMode()">
+                        <div class="toggle-box"></div> SHINY
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="move-mode" onchange="toggleMoveMode()">
+                        <div class="toggle-box"></div> PICK MOVES
+                    </label>
+                </div>
+            </div>
+            <div class="char-grid" id="char-grid"></div>
+            <div id="data-loading">Reading Pokedex Data...</div>
+        </div>
+
+        <div id="move-modal">
+            <div class="modal-content">
+                <h2 id="modal-pokemon-name" style="color:white; margin:0;">Moves</h2>
+                <p style="color:#aaa; font-size:10px; text-align:center;">Select 4 moves</p>
+                <div class="move-grid" id="modal-move-grid"></div>
+                <div class="modal-buttons">
+                    <button class="action-btn cancel" onclick="closeMoveSelector()">Back</button>
+                    <button class="action-btn" id="confirm-moves-btn" onclick="confirmMoves()" disabled>Confirm (0/4)</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-container" class="screen">
+            <div class="battle-scene">
+                <div id="enemy-hud" class="hud">
+                    <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
+                    <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
+                    <div class="type-label"><span id="enemy-type">???</span><span id="enemy-ability" class="ability-badge">---</span></div>
+                </div>
+                <div id="player-hud" class="hud">
+                    <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
+                    <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
+                    <div class="info-text" style="margin-top: 5px; justify-content: flex-end;"> <span id="player-hp-text">100/100</span> </div>
+                    <div class="type-label"><span id="player-type">???</span><span id="player-ability" class="ability-badge">---</span></div>
+                </div>
+                <div id="player-pos" class="sprite-container">
+                    <div class="platform"></div><div id="player-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="player-img">
+                </div>
+                <div id="enemy-pos" class="sprite-container">
+                    <div class="platform"></div><div id="enemy-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="enemy-img">
+                </div>
+            </div>
+            <div class="control-panel">
+                <div id="dialogue-box">Choose a Pokémon to begin!</div>
+                <div class="moves-container" id="moves-ui"></div>
+                <div class="moves-container" id="reset-ui" style="display:none; grid-template-columns: 1fr;">
+                    <button class="reset-btn" id="reset-btn" onclick="resetToSelect()" style="display:block;">Play Again</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="flash-overlay"></div>
+        <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
     </div>
 
-    <div id="select-screen" class="screen">
-        <div class="select-header">
-            <h2 id="select-title">Choose Your Pokémon</h2>
-            <input type="text" id="search-bar" placeholder="SEARCH POKEMON..." onkeyup="filterGrid()">
+    <div id="chat-sidebar">
+        <div class="chat-header">
+            <span>PokéAssistant</span>
+            <span style="font-size: 10px; color: #aaa;">Press '0' to close</span>
         </div>
-        <div class="char-grid" id="char-grid"></div>
-    </div>
-
-    <div id="game-container" class="screen">
-        <div class="battle-scene">
-            <div id="enemy-hud" class="hud">
-                <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
-                <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
-                <div class="type-label" id="enemy-type">???</div>
+        <div class="chat-body" id="chat-history">
+            <div class="chat-msg bot">
+                Assistant Ready.<br>
+                Try <b>/dt lugia</b> or <b>/weak garchomp</b>.
             </div>
-            <div id="player-hud" class="hud">
-                <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
-                <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
-                <div class="info-text" style="margin-top: 5px; justify-content: flex-end;"> <span id="player-hp-text">100/100</span> </div>
-                <div class="type-label" id="player-type" style="text-align: right;">???</div>
+            <div class="pill-container">
+                <div class="pill" onclick="fillChat('/dt ')">/dt</div>
+                <div class="pill" onclick="fillChat('/weak ')">/weak</div>
+                <div class="pill" onclick="fillChat('/learn ')">/learn</div>
+                <div class="pill" onclick="fillChat('/calc')">/calc</div>
             </div>
-
-            <div id="enemy-pos" class="sprite-container"><div class="platform"></div><img src="" class="sprite-image" id="enemy-img"></div>
-            <div id="player-pos" class="sprite-container"><div class="platform"></div><img src="" class="sprite-image" id="player-img"></div>
         </div>
-
-        <div class="control-panel">
-            <div id="dialogue-box">Choose a Pokémon to begin!</div>
-            <div class="moves-container" id="moves-ui"></div>
-            <div class="moves-container" id="reset-ui" style="display:none; grid-template-columns: 1fr;">
-                <button class="reset-btn" id="reset-btn" onclick="resetToSelect()" style="display:block;">Play Again</button>
+        <div class="chat-input-area">
+            <div class="chat-input-wrapper">
+                <input type="text" id="chat-input" placeholder="Type command...">
             </div>
         </div>
     </div>
 
-    <div id="flash-overlay"></div>
-    <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
-    <audio id="bgm" loop crossorigin="anonymous"><source src="https://play.pokemonshowdown.com/audio/bgm/rby-trainer.mp3" type="audio/mpeg"></audio>
+    <audio id="welcome-bgm" loop> <source src="music/welcome.mp3" type="audio/mpeg"> </audio>
+    <audio id="battle-bgm" loop> <source src="music/battle.mp3" type="audio/mpeg"> <source src="https://play.pokemonshowdown.com/audio/bgm/rby-trainer.mp3" type="audio/mpeg"> </audio>
+    <audio id="victory-bgm"> <source src="music/victory.mp3" type="audio/mpeg"> <source src="https://play.pokemonshowdown.com/audio/bgm/rby-victory-trainer.mp3" type="audio/mpeg"> </audio>
 
     <script>
-        // --- 1. DATA: SUPPORTED MOVE POOL ---
-        // Instead of hardcoding 151 pokemon moves, we create a master list of generic moves.
-        // When we fetch a pokemon, we look at what moves it learns, and pick the best ones from this list.
-        const MASTER_MOVE_DEX = {
-            // FIRE
-            "flamethrower": {power: 90, type: "fire", cat: "Special"},
-            "fire-blast": {power: 110, type: "fire", cat: "Special"},
-            "ember": {power: 40, type: "fire", cat: "Special"},
-            "flare-blitz": {power: 120, type: "fire", cat: "Physical"},
-            "fire-punch": {power: 75, type: "fire", cat: "Physical"},
-            // WATER
-            "hydro-pump": {power: 110, type: "water", cat: "Special"},
-            "surf": {power: 90, type: "water", cat: "Special"},
-            "water-gun": {power: 40, type: "water", cat: "Special"},
-            "waterfall": {power: 80, type: "water", cat: "Physical"},
-            "bubble-beam": {power: 65, type: "water", cat: "Special"},
-            // GRASS
-            "solar-beam": {power: 120, type: "grass", cat: "Special"},
-            "energy-ball": {power: 90, type: "grass", cat: "Special"},
-            "razor-leaf": {power: 55, type: "grass", cat: "Physical"},
-            "vine-whip": {power: 45, type: "grass", cat: "Physical"},
-            "giga-drain": {power: 75, type: "grass", cat: "Special"},
-            // ELECTRIC
-            "thunderbolt": {power: 90, type: "electric", cat: "Special"},
-            "thunder": {power: 110, type: "electric", cat: "Special"},
-            "thunder-punch": {power: 75, type: "electric", cat: "Physical"},
-            "spark": {power: 65, type: "electric", cat: "Physical"},
-            // ICE
-            "ice-beam": {power: 90, type: "ice", cat: "Special"},
-            "blizzard": {power: 110, type: "ice", cat: "Special"},
-            "ice-punch": {power: 75, type: "ice", cat: "Physical"},
-            // FIGHTING
-            "cross-chop": {power: 100, type: "fighting", cat: "Physical"},
-            "brick-break": {power: 75, type: "fighting", cat: "Physical"},
-            "submission": {power: 80, type: "fighting", cat: "Physical"},
-            "aura-sphere": {power: 80, type: "fighting", cat: "Special"},
-            // POISON
-            "sludge-bomb": {power: 90, type: "poison", cat: "Special"},
-            "poison-jab": {power: 80, type: "poison", cat: "Physical"},
-            "acid": {power: 40, type: "poison", cat: "Special"},
-            // GROUND
-            "earthquake": {power: 100, type: "ground", cat: "Physical"},
-            "dig": {power: 80, type: "ground", cat: "Physical"},
-            "mud-shot": {power: 55, type: "ground", cat: "Special"},
-            // FLYING
-            "fly": {power: 90, type: "flying", cat: "Physical"},
-            "wing-attack": {power: 60, type: "flying", cat: "Physical"},
-            "aerial-ace": {power: 60, type: "flying", cat: "Physical"},
-            "air-slash": {power: 75, type: "flying", cat: "Special"},
-            "drill-peck": {power: 80, type: "flying", cat: "Physical"},
-            // PSYCHIC
-            "psychic": {power: 90, type: "psychic", cat: "Special"},
-            "psybeam": {power: 65, type: "psychic", cat: "Special"},
-            "confusion": {power: 50, type: "psychic", cat: "Special"},
-            "zen-headbutt": {power: 80, type: "psychic", cat: "Physical"},
-            // BUG
-            "x-scissor": {power: 80, type: "bug", cat: "Physical"},
-            "bug-buzz": {power: 90, type: "bug", cat: "Special"},
-            // ROCK
-            "rock-slide": {power: 75, type: "rock", cat: "Physical"},
-            "stone-edge": {power: 100, type: "rock", cat: "Physical"},
-            "rock-throw": {power: 50, type: "rock", cat: "Physical"},
-            // GHOST
-            "shadow-ball": {power: 80, type: "ghost", cat: "Special"},
-            "shadow-claw": {power: 70, type: "ghost", cat: "Physical"},
-            "lick": {power: 30, type: "ghost", cat: "Physical"},
-            // DRAGON
-            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"},
-            "outrage": {power: 120, type: "dragon", cat: "Physical"},
-            "dragon-pulse": {power: 85, type: "dragon", cat: "Special"},
-            // STEEL
-            "iron-tail": {power: 100, type: "steel", cat: "Physical"},
-            "flash-cannon": {power: 80, type: "steel", cat: "Special"},
-            "steel-wing": {power: 70, type: "steel", cat: "Physical"},
-            // DARK
-            "crunch": {power: 80, type: "dark", cat: "Physical"},
-            "bite": {power: 60, type: "dark", cat: "Physical"},
-            "dark-pulse": {power: 80, type: "dark", cat: "Special"},
-            // NORMAL
-            "body-slam": {power: 85, type: "normal", cat: "Physical"},
-            "hyper-beam": {power: 150, type: "normal", cat: "Special"},
-            "tri-attack": {power: 80, type: "normal", cat: "Special"},
-            "slash": {power: 70, type: "normal", cat: "Physical"},
-            "quick-attack": {power: 40, type: "normal", cat: "Physical"},
-            "tackle": {power: 40, type: "normal", cat: "Physical"},
-            "scratch": {power: 40, type: "normal", cat: "Physical"},
-            "cut": {power: 50, type: "normal", cat: "Physical"},
-            "strength": {power: 80, type: "normal", cat: "Physical"},
-            "double-edge": {power: 120, type: "normal", cat: "Physical"},
-            "swift": {power: 60, type: "normal", cat: "Special"},
-            // HEAL/STATUS (Generic)
-            "recover": {power: -50, type: "heal", cat: "Status"},
-            "roost": {power: -50, type: "heal", cat: "Status"},
-            "synthesis": {power: -50, type: "heal", cat: "Status"},
-            "rest": {power: -100, type: "heal", cat: "Status"} // Actually full heal
-        };
-
         const TYPE_CHART = {
-            normal:   { rock: 0.5, ghost: 0, steel: 0.5 },
-            fire:     { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
-            water:    { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
-            electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 },
-            grass:    { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 },
-            ice:      { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 },
-            fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 },
-            poison:   { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0 },
-            ground:   { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 },
-            flying:   { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 },
-            psychic:  { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 },
-            bug:      { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 },
-            rock:     { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 },
-            ghost:    { psychic: 2, ghost: 2, dark: 0.5, normal: 0 },
-            dragon:   { dragon: 2, steel: 0.5, fairy: 0 },
-            steel:    { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 },
-            dark:     { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }
+            normal: { rock: 0.5, ghost: 0, steel: 0.5 }, fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 }, water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 }, electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 }, grass: { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 }, ice: { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 }, fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 }, poison: { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0.5 }, ground: { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 }, flying: { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 }, psychic: { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 }, bug: { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 }, rock: { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 }, ghost: { psychic: 2, ghost: 2, dark: 0.5, normal: 0 }, dragon: { dragon: 2, steel: 0.5, fairy: 0 }, steel: { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 }, dark: { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }, fairy: { fighting: 2, dragon: 2, dark: 2, fire: 0.5, poison: 0.5, steel: 0.5 }
         };
 
-        // --- GLOBAL STATE ---
-        const pokemonDB = []; // Will be populated by API
+        const MASTER_MOVE_DEX = {
+            "flamethrower": {power: 90, type: "fire", cat: "Special"}, "fire-blast": {power: 110, type: "fire", cat: "Special"}, "ember": {power: 40, type: "fire", cat: "Special"}, "flare-blitz": {power: 120, type: "fire", cat: "Physical"}, "fire-punch": {power: 75, type: "fire", cat: "Physical"},
+            "hydro-pump": {power: 110, type: "water", cat: "Special"}, "surf": {power: 90, type: "water", cat: "Special"}, "water-gun": {power: 40, type: "water", cat: "Special"}, "waterfall": {power: 80, type: "water", cat: "Physical"}, "bubble-beam": {power: 65, type: "water", cat: "Special"},
+            "solar-beam": {power: 120, type: "grass", cat: "Special"}, "energy-ball": {power: 90, type: "grass", cat: "Special"}, "razor-leaf": {power: 55, type: "grass", cat: "Physical"}, "vine-whip": {power: 45, type: "grass", cat: "Physical"}, "giga-drain": {power: 75, type: "grass", cat: "Special"},
+            "thunderbolt": {power: 90, type: "electric", cat: "Special"}, "thunder": {power: 110, type: "electric", cat: "Special"}, "thunder-punch": {power: 75, type: "electric", cat: "Physical"}, "spark": {power: 65, type: "electric", cat: "Physical"},
+            "ice-beam": {power: 90, type: "ice", cat: "Special"}, "blizzard": {power: 110, type: "ice", cat: "Special"}, "ice-punch": {power: 75, type: "ice", cat: "Physical"},
+            "cross-chop": {power: 100, type: "fighting", cat: "Physical"}, "brick-break": {power: 75, type: "fighting", cat: "Physical"}, "submission": {power: 80, type: "fighting", cat: "Physical"}, "aura-sphere": {power: 80, type: "fighting", cat: "Special"},
+            "sludge-bomb": {power: 90, type: "poison", cat: "Special"}, "poison-jab": {power: 80, type: "poison", cat: "Physical"}, "acid": {power: 40, type: "poison", cat: "Special"},
+            "earthquake": {power: 100, type: "ground", cat: "Physical"}, "dig": {power: 80, type: "ground", cat: "Physical"}, "mud-shot": {power: 55, type: "ground", cat: "Special"},
+            "fly": {power: 90, type: "flying", cat: "Physical"}, "wing-attack": {power: 60, type: "flying", cat: "Physical"}, "aerial-ace": {power: 60, type: "flying", cat: "Physical"}, "air-slash": {power: 75, type: "flying", cat: "Special"}, "drill-peck": {power: 80, type: "flying", cat: "Physical"},
+            "psychic": {power: 90, type: "psychic", cat: "Special"}, "psybeam": {power: 65, type: "psychic", cat: "Special"}, "confusion": {power: 50, type: "psychic", cat: "Special"}, "zen-headbutt": {power: 80, type: "psychic", cat: "Physical"},
+            "x-scissor": {power: 80, type: "bug", cat: "Physical"}, "bug-buzz": {power: 90, type: "bug", cat: "Special"},
+            "rock-slide": {power: 75, type: "rock", cat: "Physical"}, "stone-edge": {power: 100, type: "rock", cat: "Physical"}, "rock-throw": {power: 50, type: "rock", cat: "Physical"},
+            "shadow-ball": {power: 80, type: "ghost", cat: "Special"}, "shadow-claw": {power: 70, type: "ghost", cat: "Physical"}, "lick": {power: 30, type: "ghost", cat: "Physical"},
+            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"}, "outrage": {power: 120, type: "dragon", cat: "Physical"}, "dragon-pulse": {power: 85, type: "dragon", cat: "Special"},
+            "iron-tail": {power: 100, type: "steel", cat: "Physical"}, "flash-cannon": {power: 80, type: "steel", cat: "Special"}, "steel-wing": {power: 70, type: "steel", cat: "Physical"},
+            "crunch": {power: 80, type: "dark", cat: "Physical"}, "bite": {power: 60, type: "dark", cat: "Physical"}, "dark-pulse": {power: 80, type: "dark", cat: "Special"},
+            "body-slam": {power: 85, type: "normal", cat: "Physical"}, "hyper-beam": {power: 150, type: "normal", cat: "Special"}, "tri-attack": {power: 80, type: "normal", cat: "Special"}, "slash": {power: 70, type: "normal", cat: "Physical"}, "quick-attack": {power: 40, type: "normal", cat: "Physical"}, "tackle": {power: 40, type: "normal", cat: "Physical"}, "scratch": {power: 40, type: "normal", cat: "Physical"}, "cut": {power: 50, type: "normal", cat: "Physical"}, "strength": {power: 80, type: "normal", cat: "Physical"}, "double-edge": {power: 120, type: "normal", cat: "Physical"}, "swift": {power: 60, type: "normal", cat: "Special"},
+            "moonblast": {power: 95, type: "fairy", cat: "Special"}, "play-rough": {power: 90, type: "fairy", cat: "Physical"}, "dazzling-gleam": {power: 80, type: "fairy", cat: "Special"},
+            "recover": {power: -50, type: "heal", cat: "Status"}, "roost": {power: -50, type: "heal", cat: "Status"}, "synthesis": {power: -50, type: "heal", cat: "Status"}, "rest": {power: -100, type: "heal", cat: "Status"} 
+        };
+
+        const pokemonList = []; // Light list
+        const loadedPokemon = []; // Actual rendered list
+        let currentOffset = 0;
+        const BATCH_SIZE = 50;
+
         let player = {};
         let enemy = {};
         let selectedPlayerIndex = null;
         let selectionPhase = 'player';
-        const bgm = document.getElementById('bgm');
+        let isShinyMode = false;
+        let isMoveMode = false;
+        
+        let playerShiny = false;
+        let enemyShiny = false;
+        let currentMoveSelectionTarget = 'player';
+        let finalPlayerMoves = null;
+        let finalEnemyMoves = null;
+        let tempSelectedMoves = [];
+        
+        const welcomeBgm = document.getElementById('welcome-bgm');
+        const battleBgm = document.getElementById('battle-bgm');
+        const victoryBgm = document.getElementById('victory-bgm');
         const dialogueBox = document.getElementById('dialogue-box');
 
-        // --- 2. INITIALIZATION & API FETCH ---
-        window.onload = async () => {
-            await fetchAllKanto();
-        };
+        window.onload = async () => { await fetchPokemonList(); };
 
-        async function fetchAllKanto() {
+        // --- FETCHING ---
+        async function fetchPokemonList() {
             const loadingBar = document.getElementById('loading-bar-fill');
             const loadingText = document.getElementById('loading-text');
             const startBtn = document.getElementById('start-btn');
             const loadingContainer = document.getElementById('loading-container');
 
-            // Fetch basic list 1-151
-            const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
+            const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=10000');
             const data = await response.json();
-            const results = data.results;
-
-            // Fetch details for each
-            const promises = results.map(async (p, index) => {
-                const res = await fetch(p.url);
-                const details = await res.json();
-                
-                // Format Data for our engine
-                const formatted = {
-                    id: details.id,
-                    name: details.name,
-                    types: details.types.map(t => t.type.name),
-                    stats: {
-                        hp: details.stats[0].base_stat,
-                        atk: details.stats[1].base_stat,
-                        def: details.stats[2].base_stat,
-                        spa: details.stats[3].base_stat,
-                        spd: details.stats[4].base_stat,
-                        spe: details.stats[5].base_stat
-                    },
-                    front: details.sprites.front_default,
-                    back: details.sprites.back_default || details.sprites.front_default, // Fallback if no back sprite
-                    rawMoves: details.moves.map(m => m.move.name) // Store move names to filter later
-                };
-                
-                // Update UI every 5 pokemon loaded
-                if (index % 5 === 0) {
-                    const pct = Math.floor((index / 151) * 100);
-                    loadingBar.style.width = pct + "%";
-                    loadingText.innerText = `${index} / 151`;
+            
+            data.results.forEach((p, index) => {
+                const id = p.url.split('/')[6];
+                if (id) {
+                    pokemonList.push({
+                        name: p.name,
+                        url: p.url,
+                        id: parseInt(id),
+                        sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+                        spriteShiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`,
+                        fullData: null 
+                    });
                 }
-                
-                return formatted;
             });
 
-            // Wait for all
-            const allData = await Promise.all(promises);
-            // Sort by ID because async might finish out of order
-            allData.sort((a,b) => a.id - b.id);
-            
-            // Push to DB
-            allData.forEach(p => pokemonDB.push(p));
-
-            // Done
             loadingBar.style.width = "100%";
-            loadingText.innerText = "151 / 151 - READY!";
+            loadingText.innerText = `${pokemonList.length} POKÉMON CAUGHT!`;
             setTimeout(() => {
                 loadingContainer.style.display = 'none';
                 startBtn.style.display = 'inline-block';
             }, 500);
         }
 
-        // --- 3. DYNAMIC MOVE GENERATION ---
-        function generateMoveset(pokemon) {
-            let moves = [];
-            
-            // Check every move the pokemon *can* learn against our Master Dex
-            pokemon.rawMoves.forEach(mName => {
-                if (MASTER_MOVE_DEX[mName]) {
-                    const moveData = MASTER_MOVE_DEX[mName];
-                    moves.push({ name: mName.replace(/-/g, ' '), ...moveData });
-                }
-            });
-
-            // Add generic Heal if they don't have one (for gameplay balance)
-            if (!moves.some(m => m.cat === 'Status')) {
-               moves.push({ name: "recover", power: -50, type: "heal", cat: "Status" });
-            }
-
-            // Pick 4 strongest/best
-            // Sort: Prioritize Moves with Power > 0, then by Power
-            moves.sort((a, b) => b.power - a.power);
-            
-            // Slice top 4, but ensure at least 1 attacking move
-            let finalMoves = moves.slice(0, 4);
-            
-            // Failsafe: if no moves matched (unlikely), give Struggle
-            if (finalMoves.length === 0) {
-                finalMoves.push({name: "Struggle", power: 50, type: "normal", cat: "Physical"});
-            }
-
-            return finalMoves;
+        async function ensurePokemonData(pIndex) {
+            const p = pokemonList[pIndex];
+            if (p.fullData) return p.fullData;
+            document.getElementById('data-loading').style.display = 'flex';
+            try {
+                const res = await fetch(p.url);
+                const details = await res.json();
+                p.fullData = {
+                    id: details.id, name: details.name, types: details.types.map(t => t.type.name), ability: details.abilities[0].ability.name,
+                    stats: { hp: details.stats[0].base_stat, atk: details.stats[1].base_stat, def: details.stats[2].base_stat, spa: details.stats[3].base_stat, spd: details.stats[4].base_stat, spe: details.stats[5].base_stat },
+                    front: details.sprites.front_default || p.sprite, back: details.sprites.back_default || details.sprites.front_default,
+                    frontShiny: details.sprites.front_shiny || p.spriteShiny, backShiny: details.sprites.back_shiny || details.sprites.back_default,
+                    rawMoves: details.moves.map(m => m.move.name)
+                };
+            } catch (e) { console.error("Failed data", e); }
+            document.getElementById('data-loading').style.display = 'none';
+            return p.fullData;
         }
 
-        // --- GAME LOGIC START ---
-        
+        // --- INFINITE SCROLL ---
+        const charGrid = document.getElementById('char-grid');
+        charGrid.addEventListener('scroll', () => {
+            if (charGrid.scrollTop + charGrid.clientHeight >= charGrid.scrollHeight - 50) {
+                appendPokemonBatch();
+            }
+        });
+
+        function renderSelectionGrid() {
+            charGrid.innerHTML = "";
+            currentOffset = 0;
+            
+            const randomCard = document.createElement('div');
+            randomCard.className = 'char-card random-card';
+            randomCard.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random"><p>Random</p>`;
+            randomCard.onclick = () => handleSelection(-1);
+            charGrid.appendChild(randomCard);
+
+            appendPokemonBatch();
+        }
+
+        function appendPokemonBatch() {
+            const filterText = document.getElementById('search-bar').value.toLowerCase();
+            const filtered = pokemonList.filter(p => p.name.includes(filterText));
+            
+            const nextBatch = filtered.slice(currentOffset, currentOffset + BATCH_SIZE);
+            if(nextBatch.length === 0) return;
+
+            nextBatch.forEach((p) => {
+                const originalIndex = pokemonList.indexOf(p);
+                const card = document.createElement('div');
+                card.className = 'char-card';
+                const imgUrl = isShinyMode ? p.spriteShiny : p.sprite;
+                card.innerHTML = `<img src="${imgUrl}" alt="${p.name}" loading="lazy"><p>${p.name}</p>`;
+                card.onclick = () => handleSelection(originalIndex);
+                charGrid.appendChild(card);
+            });
+
+            currentOffset += BATCH_SIZE;
+        }
+
+        function filterGrid() {
+            renderSelectionGrid();
+        }
+
+        // --- UI & LOGIC ---
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
         }
 
         function startExperience() {
-            if(bgm.paused) { 
-                bgm.volume = 0.3; 
-                bgm.play().catch(e => {
-                    document.getElementById('mute-btn').style.backgroundColor = '#f44336';
-                    document.getElementById('mute-btn').innerText = "Audio Error";
-                });
-            }
+            if(welcomeBgm.paused) { welcomeBgm.currentTime = 1; welcomeBgm.volume = 0.3; welcomeBgm.play().catch(e => console.log(e)); }
             goToSelect();
         }
 
         function goToSelect() {
             selectionPhase = 'player';
             selectedPlayerIndex = null;
+            finalPlayerMoves = null;
+            finalEnemyMoves = null;
             document.getElementById('select-title').innerText = "Choose Your Pokémon";
             document.getElementById('search-bar').value = "";
+            
+            // FULL RESET OF STATE
+            isShinyMode = false;
+            isMoveMode = false;
+            document.getElementById('shiny-mode').checked = false;
+            document.getElementById('move-mode').checked = false;
+            
             renderSelectionGrid();
             switchScreen('select-screen');
         }
 
-        function renderSelectionGrid(filterText = "") {
-            const grid = document.getElementById('char-grid');
-            grid.innerHTML = "";
-
-            // Random Button
-            const randomCard = document.createElement('div');
-            randomCard.className = 'char-card random-card';
-            randomCard.innerHTML = `
-                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random">
-                <p>Random</p>
-            `;
-            randomCard.onclick = () => handleSelection(-1);
-            grid.appendChild(randomCard);
-
-            // Filter Logic
-            const filtered = pokemonDB.filter(p => p.name.includes(filterText.toLowerCase()));
-
-            filtered.forEach((p) => {
-                // Find original index in master DB
-                const originalIndex = pokemonDB.indexOf(p);
-                
-                const card = document.createElement('div');
-                card.className = 'char-card';
-                card.innerHTML = `
-                    <img src="${p.front}" alt="${p.name}" loading="lazy">
-                    <p>${p.name}</p>
-                    <div class="stat-preview">SPD: ${p.stats.spe} | ATK: ${p.stats.atk}</div>
-                `;
-                card.onclick = () => handleSelection(originalIndex);
-                grid.appendChild(card);
-            });
+        function resetToggles() {
+            document.getElementById('shiny-mode').checked = false;
+            document.getElementById('move-mode').checked = false;
+            isShinyMode = false;
+            isMoveMode = false;
+            renderSelectionGrid(document.getElementById('search-bar').value);
         }
 
-        function filterGrid() {
-            const text = document.getElementById('search-bar').value;
-            renderSelectionGrid(text);
+        function toggleShinyMode() {
+            isShinyMode = document.getElementById('shiny-mode').checked;
+            renderSelectionGrid();
         }
 
-        function handleSelection(index) {
-            if (selectionPhase === 'player') {
-                let pIndex = index;
-                if (pIndex === -1) {
-                    pIndex = Math.floor(Math.random() * pokemonDB.length);
-                }
-                selectedPlayerIndex = pIndex;
-                selectionPhase = 'enemy';
-                document.getElementById('select-title').innerText = "Choose Opponent";
-                document.getElementById('search-bar').value = "";
-                renderSelectionGrid(); 
+        function toggleMoveMode() { 
+            isMoveMode = document.getElementById('move-mode').checked; 
+        }
+
+        async function handleSelection(index) {
+            let pIndex = index;
+            let isRandom = (index === -1);
+
+            if (isRandom) {
+                pIndex = Math.floor(Math.random() * pokemonList.length);
+            }
+
+            // Determine Shiny Status
+            let chosenShiny = false;
+            if (isRandom) {
+                chosenShiny = Math.random() < 0.5;
             } else {
-                let eIndex = index;
-                if (eIndex === -1) {
-                    eIndex = Math.floor(Math.random() * pokemonDB.length);
+                chosenShiny = isShinyMode;
+            }
+
+            if (selectionPhase === 'player') playerShiny = chosenShiny;
+            else enemyShiny = chosenShiny;
+
+            await ensurePokemonData(pIndex);
+
+            // Handle Move Selection Logic
+            if (selectionPhase === 'player') {
+                selectedPlayerIndex = pIndex;
+                if (isMoveMode && !isRandom) {
+                    openMoveSelector(pIndex, 'player');
+                } else {
+                    proceedToEnemySelect();
                 }
-                startGame(selectedPlayerIndex, eIndex);
+            } else {
+                // Enemy Phase
+                if (isMoveMode && !isRandom) {
+                    openMoveSelector(pIndex, 'enemy');
+                } else {
+                    startGame(selectedPlayerIndex, pIndex);
+                }
             }
         }
 
-        function resetToSelect() {
-            goToSelect();
-            document.getElementById('moves-ui').style.display = 'grid';
-            document.getElementById('reset-ui').style.display = 'none';
+        function proceedToEnemySelect() {
+            selectionPhase = 'enemy';
+            document.getElementById('select-title').innerText = "Choose Opponent";
+            document.getElementById('search-bar').value = "";
+            
+            // AUTO RESET CHECKBOXES
+            document.getElementById('shiny-mode').checked = false;
+            document.getElementById('move-mode').checked = false;
+            isShinyMode = false; 
+            isMoveMode = false;
+            
+            renderSelectionGrid();
         }
 
-        function startGame(pIndex, eIndex) {
-            // Setup Player
-            const pData = pokemonDB[pIndex];
-            player = JSON.parse(JSON.stringify(pData)); 
+        function openMoveSelector(pIndex, target) {
+            currentMoveSelectionTarget = target;
+            const pData = pokemonList[pIndex].fullData;
+            const validMoves = getValidMoves(pData);
+            tempSelectedMoves = [];
+            
+            document.getElementById('modal-pokemon-name').innerText = target === 'enemy' ? "Enemy " + pData.name.toUpperCase() : pData.name.toUpperCase();
+            const grid = document.getElementById('modal-move-grid');
+            grid.innerHTML = "";
+
+            validMoves.forEach(move => {
+                const div = document.createElement('div');
+                div.className = 'move-option';
+                div.innerHTML = `<div><strong>${move.name.toUpperCase()}</strong><div class="move-details">PWR:${move.power} ${move.cat}</div></div>`;
+                div.onclick = () => toggleMoveSelection(div, move);
+                grid.appendChild(div);
+            });
+
+            const btn = document.getElementById('confirm-moves-btn');
+            btn.disabled = true; btn.innerText = "Confirm (0/4)";
+            btn.onclick = () => confirmMoves(pIndex); 
+            document.getElementById('move-modal').style.display = 'flex';
+        }
+
+        function toggleMoveSelection(div, move) {
+            const index = tempSelectedMoves.indexOf(move);
+            if (index > -1) {
+                tempSelectedMoves.splice(index, 1);
+                div.classList.remove('selected');
+            } else {
+                if (tempSelectedMoves.length < 4) {
+                    tempSelectedMoves.push(move);
+                    div.classList.add('selected');
+                }
+            }
+            const count = tempSelectedMoves.length;
+            const btn = document.getElementById('confirm-moves-btn');
+            btn.innerText = `Confirm (${count}/4)`;
+            btn.disabled = (count !== 4);
+        }
+
+        function closeMoveSelector() { document.getElementById('move-modal').style.display = 'none'; }
+
+        function confirmMoves(currentIndex) {
+            document.getElementById('move-modal').style.display = 'none';
+            
+            // AUTO RESET CHECKBOX
+            document.getElementById('move-mode').checked = false;
+            isMoveMode = false;
+
+            if (currentMoveSelectionTarget === 'player') {
+                finalPlayerMoves = JSON.parse(JSON.stringify(tempSelectedMoves));
+                proceedToEnemySelect();
+            } else {
+                finalEnemyMoves = JSON.parse(JSON.stringify(tempSelectedMoves));
+                startGame(selectedPlayerIndex, currentIndex);
+            }
+        }
+
+        async function startGame(pIndex, eIndex) {
+            await ensurePokemonData(eIndex);
+
+            const pData = pokemonList[pIndex].fullData;
+            player = JSON.parse(JSON.stringify(pData));
             player.maxHp = Math.floor(pData.stats.hp + 60 + 50); 
             player.currHp = player.maxHp;
             player.isPlayer = true;
-            player.moves = generateMoveset(pData);
-            
-            // Setup Enemy
-            const eData = pokemonDB[eIndex];
+            player.moves = finalPlayerMoves ? finalPlayerMoves : pickRandomMoves(getValidMoves(pData));
+
+            const eData = pokemonList[eIndex].fullData;
             enemy = JSON.parse(JSON.stringify(eData));
             enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50);
             enemy.currHp = enemy.maxHp;
             enemy.isPlayer = false;
-            enemy.moves = generateMoveset(eData);
+            enemy.moves = finalEnemyMoves ? finalEnemyMoves : pickRandomMoves(getValidMoves(eData));
 
-            // Render
-            document.getElementById('player-img').src = player.back;
+            welcomeBgm.pause();
+            battleBgm.volume = 0.3; battleBgm.currentTime = 1; battleBgm.play().catch(e => console.log(e));
+
+            const pSprite = playerShiny ? player.backShiny : player.back;
+            const eSprite = enemyShiny ? enemy.frontShiny : enemy.front;
+
+            document.getElementById('player-img').src = pSprite;
             document.getElementById('player-name').textContent = player.name;
             document.getElementById('player-type').textContent = player.types.join(" / ");
+            document.getElementById('player-ability').textContent = `Ability: ${player.ability}`;
             updateHealthUI(player);
 
-            document.getElementById('enemy-img').src = enemy.front;
-            document.getElementById('enemy-img').style.opacity = "1";
+            document.getElementById('enemy-img').src = eSprite;
             document.getElementById('enemy-name').textContent = enemy.name;
             document.getElementById('enemy-type').textContent = enemy.types.join(" / ");
+            document.getElementById('enemy-ability').textContent = `Ability: ${enemy.ability}`;
             updateHealthUI(enemy);
+
+            const pImg = document.getElementById('player-img');
+            const eImg = document.getElementById('enemy-img');
+            pImg.style.opacity = '0'; pImg.classList.remove('pop');
+            eImg.style.opacity = '0'; eImg.classList.remove('pop');
+
+            const pBall = document.getElementById('player-ball');
+            const eBall = document.getElementById('enemy-ball');
+            pBall.style.display = 'block'; pBall.classList.add('throw-p');
+            eBall.style.display = 'block'; eBall.classList.add('throw-e');
 
             const movesContainer = document.getElementById('moves-ui');
             movesContainer.innerHTML = "";
@@ -619,40 +668,106 @@
             });
 
             document.getElementById('flash-overlay').style.opacity = '1';
-            dialogueBox.textContent = `A wild ${enemy.name} appeared!`;
+            dialogueBox.textContent = `Battle Start!`;
             
             setTimeout(() => {
                 switchScreen('game-container');
                 document.getElementById('flash-overlay').style.opacity = '0';
                 document.getElementById('mute-btn').style.display = 'block';
+
+                setTimeout(() => {
+                    pBall.style.display = 'none'; pBall.classList.remove('throw-p');
+                    eBall.style.display = 'none'; eBall.classList.remove('throw-e');
+                    pImg.style.opacity = '1'; pImg.classList.add('pop');
+                    eImg.style.opacity = '1'; eImg.classList.add('pop');
+                    if(playerShiny) triggerShinySparkles('player-pos');
+                    if(enemyShiny) triggerShinySparkles('enemy-pos');
+                    setTimeout(() => triggerEntryAbilities(player, enemy), 500);
+                }, 800);
             }, 200);
         }
 
-        // --- BATTLE ENGINE (Stats + Categories) ---
+        // --- NEW: ROBUST RESET FUNCTION ---
+        function resetToSelect() {
+            // Safe Audio Reset
+            try {
+                battleBgm.pause(); battleBgm.currentTime = 0;
+                victoryBgm.pause(); victoryBgm.currentTime = 0;
+                welcomeBgm.currentTime = 1;
+                welcomeBgm.play().catch(e => console.log("Audio Error Ignored:", e));
+            } catch(e) { console.log("Audio reset skipped"); }
+
+            // State Reset
+            finalPlayerMoves = null;
+            finalEnemyMoves = null;
+            tempSelectedMoves = [];
+            currentOffset = 0; // Reset scroll position
+            selectionPhase = 'player';
+            selectedPlayerIndex = null;
+
+            // UI Reset
+            document.getElementById('moves-ui').style.display = 'grid';
+            document.getElementById('reset-ui').style.display = 'none';
+            document.getElementById('move-modal').style.display = 'none'; // Force close modal
+            
+            dialogueBox.textContent = "Choose a Pokémon to begin!";
+            
+            goToSelect();
+        }
+
+        // --- BATTLE LOGIC ---
+        function getValidMoves(pokemon) {
+            let moves = [];
+            pokemon.rawMoves.forEach(mName => {
+                if (MASTER_MOVE_DEX[mName]) {
+                    const moveData = MASTER_MOVE_DEX[mName];
+                    moves.push({ name: mName.replace(/-/g, ' '), ...moveData });
+                }
+            });
+            if (!moves.some(m => m.cat === 'Status')) moves.push({ name: "recover", power: -50, type: "heal", cat: "Status" });
+            return moves;
+        }
+
+        function pickRandomMoves(validMoves) {
+            let shuffled = [...validMoves].sort(() => 0.5 - Math.random());
+            let finalMoves = shuffled.slice(0, 4);
+            if (finalMoves.length === 0) finalMoves.push({name: "Struggle", power: 50, type: "normal", cat: "Physical"});
+            return finalMoves;
+        }
+
+        function triggerShinySparkles(containerId) {
+            const container = document.getElementById(containerId);
+            for(let i=0; i<6; i++) {
+                const star = document.createElement('div');
+                star.className = 'shiny-star sparkle-anim';
+                const tx = (Math.random() - 0.5) * 250 + "%";
+                const ty = (Math.random() - 0.5) * 250 + "%";
+                star.style.setProperty('--tx', tx);
+                star.style.setProperty('--ty', ty);
+                container.appendChild(star);
+                setTimeout(() => star.remove(), 1000);
+            }
+        }
+
+        function triggerEntryAbilities(p, e) {
+            if (p.ability === 'intimidate' || e.ability === 'intimidate') {
+                if(p.ability === 'intimidate') { e.stats.atk = Math.floor(e.stats.atk * 0.67); typeWriter(`${p.name}'s Intimidate cuts ${e.name}'s Attack!`); }
+                if(e.ability === 'intimidate') { p.stats.atk = Math.floor(p.stats.atk * 0.67); setTimeout(() => typeWriter(`${e.name}'s Intimidate cuts ${p.name}'s Attack!`), 1500); }
+            } else { typeWriter(`What will ${player.name} do?`); }
+        }
+
         function handleTurn(playerMoveIndex) {
             disableButtons(true);
             const playerMove = player.moves[playerMoveIndex];
             const enemyMove = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
-
             let first, second, firstMove, secondMove;
-            if (player.stats.spe >= enemy.stats.spe) {
-                first = player; firstMove = playerMove;
-                second = enemy; secondMove = enemyMove;
-            } else {
-                first = enemy; firstMove = enemyMove;
-                second = player; secondMove = playerMove;
-            }
-
+            if (player.stats.spe >= enemy.stats.spe) { first = player; firstMove = playerMove; second = enemy; secondMove = enemyMove; }
+            else { first = enemy; firstMove = enemyMove; second = player; secondMove = playerMove; }
             executeMove(first, second, firstMove, () => {
                 if(second.currHp > 0) {
-                    setTimeout(() => {
-                        executeMove(second, first, secondMove, () => {
-                            if(first.currHp > 0) {
-                                typeWriter(`What will ${player.name} do?`);
-                                disableButtons(false);
-                            }
-                        });
-                    }, 1000);
+                    setTimeout(() => executeMove(second, first, secondMove, () => {
+                        if(first.currHp > 0) { typeWriter(`What will ${player.name} do?`); disableButtons(false); }
+                    }), 1000);
                 }
             });
         }
@@ -660,12 +775,10 @@
         function executeMove(attacker, defender, move, callback) {
             const attackerSprite = document.getElementById(attacker.isPlayer ? 'player-img' : 'enemy-img');
             const defenderSprite = document.getElementById(attacker.isPlayer ? 'enemy-img' : 'player-img');
-
             typeWriter(`${attacker.name} used ${move.name}!`, () => {
                 const anim = attacker.isPlayer ? 'lunge' : 'lunge-enemy';
                 attackerSprite.classList.add(anim);
                 setTimeout(() => attackerSprite.classList.remove(anim), 300);
-
                 setTimeout(() => {
                     if (move.cat === 'Status') {
                         const healAmount = Math.abs(move.power);
@@ -673,44 +786,38 @@
                         updateHealthUI(attacker);
                         typeWriter(`${attacker.name} recovered HP!`, callback);
                     } else {
-                        // Formula
                         let A = (move.cat === "Physical") ? attacker.stats.atk : attacker.stats.spa;
                         let D = (move.cat === "Physical") ? defender.stats.def : defender.stats.spd;
+                        if (attacker.ability === 'huge-power' && move.cat === "Physical") A *= 2;
                         let baseDmg = ((22 * move.power * (A / D)) / 50) + 2;
-
-                        // Type Mod
+                        const hpPct = attacker.currHp / attacker.maxHp;
+                        if (hpPct <= 0.33) { if ((attacker.ability === 'blaze' && move.type === 'fire') || (attacker.ability === 'torrent' && move.type === 'water') || (attacker.ability === 'overgrow' && move.type === 'grass') || (attacker.ability === 'swarm' && move.type === 'bug')) baseDmg *= 1.5; }
+                        if (attacker.ability === 'technician' && move.power <= 60) baseDmg *= 1.5;
                         let multiplier = 1.0;
-                        defender.types.forEach(t => {
-                            const map = TYPE_CHART[move.type.toLowerCase()];
-                            if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()];
-                        });
-
-                        // STAB
+                        defender.types.forEach(t => { const map = TYPE_CHART[move.type.toLowerCase()]; if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()]; });
+                        if (defender.ability === 'levitate' && move.type === 'ground') multiplier = 0;
+                        if (defender.ability === 'flash-fire' && move.type === 'fire') multiplier = 0;
+                        if ((defender.ability === 'volt-absorb' || defender.ability === 'lightning-rod') && move.type === 'electric') multiplier = 0;
+                        if (defender.ability === 'wonder-guard' && multiplier <= 1) multiplier = 0; 
                         let stab = 1.0;
                         if (attacker.types.includes(move.type)) stab = 1.5;
-
-                        // Random
                         let random = (Math.floor(Math.random() * 16) + 85) / 100;
                         let damage = Math.floor(baseDmg * multiplier * stab * random);
-                        
                         const isCrit = Math.random() < 0.0625;
                         if(isCrit) damage = Math.floor(damage * 1.5);
-
                         defender.currHp = Math.max(0, defender.currHp - damage);
                         updateHealthUI(defender);
-                        
                         defenderSprite.classList.add('shake');
                         setTimeout(() => defenderSprite.classList.remove('shake'), 500);
-
                         setTimeout(() => {
                             let msg = "";
-                            if(multiplier > 1) msg = "It's super effective!";
-                            else if(multiplier === 0) msg = "It had no effect...";
-                            else if(multiplier < 1) msg = "It's not very effective...";
-                            if(isCrit) msg += (msg ? " " : "") + "Critical hit!";
-                            
-                            if(msg) typeWriter(msg, () => checkFaint(defender, callback));
-                            else checkFaint(defender, callback);
+                            if(multiplier === 0) {
+                                if(defender.ability === 'levitate') msg = "It doesn't affect... (Levitate)";
+                                else if(defender.ability === 'flash-fire') msg = "It doesn't affect... (Flash Fire)";
+                                else msg = "It had no effect...";
+                            } else if(multiplier > 1) msg = "It's super effective!"; else if(multiplier < 1) msg = "It's not very effective...";
+                            if(isCrit && multiplier > 0) msg += (msg ? " " : "") + "Critical hit!";
+                            if(msg) typeWriter(msg, () => checkFaint(defender, callback)); else checkFaint(defender, callback);
                         }, 600);
                     }
                 }, 500);
@@ -720,14 +827,13 @@
         function checkFaint(char, cb) {
             if (char.currHp <= 0) {
                 const sprite = document.getElementById(char.isPlayer ? 'player-img' : 'enemy-img');
+                battleBgm.pause(); battleBgm.currentTime = 0;
+                if (!char.isPlayer) { victoryBgm.volume = 0.3; victoryBgm.currentTime = 1; victoryBgm.play().catch(e => console.log(e)); }
                 typeWriter(`${char.name} fainted!`, () => {
                     sprite.style.opacity = '0';
-                    if (char.isPlayer) typeWriter("You lost...", showReset);
-                    else typeWriter("You won!", showReset);
+                    if (char.isPlayer) typeWriter("You lost...", showReset); else typeWriter("You won!", showReset);
                 });
-            } else {
-                cb();
-            }
+            } else { cb(); }
         }
 
         function updateHealthUI(char) {
@@ -735,28 +841,102 @@
             const bar = document.getElementById(`${role}-hp-bar`);
             const pct = (char.currHp / char.maxHp) * 100;
             bar.style.width = pct + "%";
-            if(pct > 50) bar.style.backgroundColor = "#4caf50";
-            else if(pct > 20) bar.style.backgroundColor = "#ffeb3b";
-            else bar.style.backgroundColor = "#f44336";
-            
+            if(pct > 50) bar.style.backgroundColor = "#4caf50"; else if(pct > 20) bar.style.backgroundColor = "#ffeb3b"; else bar.style.backgroundColor = "#f44336";
             if(char.isPlayer) document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
         }
 
         function typeWriter(text, cb) {
             dialogueBox.textContent = "";
             let i = 0;
-            function type() {
-                if (i < text.length) { dialogueBox.textContent += text.charAt(i); i++; setTimeout(type, 20); }
-                else if (cb) { setTimeout(cb, 500); }
-            }
+            function type() { if (i < text.length) { dialogueBox.textContent += text.charAt(i); i++; setTimeout(type, 20); } else if (cb) { setTimeout(cb, 500); } }
             type();
         }
 
         function disableButtons(disabled) { document.querySelectorAll('.move-btn').forEach(b => b.disabled = disabled); }
         function showReset() { document.getElementById('moves-ui').style.display = 'none'; document.getElementById('reset-ui').style.display = 'grid'; }
         function toggleMute() {
+            welcomeBgm.muted = !welcomeBgm.muted; battleBgm.muted = !battleBgm.muted; victoryBgm.muted = !victoryBgm.muted;
             const btn = document.getElementById('mute-btn');
-            if (bgm.paused) { bgm.play(); btn.textContent = "🔊 Mute"; } else { bgm.pause(); btn.textContent = "🔇 Unmute"; }
+            if (welcomeBgm.muted) { btn.textContent = "🔇 Unmute"; } else { btn.textContent = "🔊 Mute"; }
+        }
+
+        // --- SIDEBAR UI LOGIC ---
+        document.addEventListener('keydown', (e) => { if (e.key === '0') toggleChat(); });
+        function toggleChat() { document.getElementById('chat-sidebar').classList.toggle('open'); }
+        function fillChat(text) { document.getElementById('chat-input').value = text; document.getElementById('chat-input').focus(); }
+        document.getElementById('chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const text = this.value.trim();
+                if (!text) return;
+                addChatMessage(text, 'user');
+                this.value = '';
+                if (text.startsWith('/dt ')) handleDataCommand(text.substring(4).trim());
+                else if (text.startsWith('/weak ')) handleWeaknessCommand(text.substring(6).trim());
+                else if (text.startsWith('/learn ')) handleLearnCommand(text.substring(7).trim());
+                else if (text === '/calc') addChatMessage("<a href='https://calc.pokemonshowdown.com/' target='_blank'>Damage Calculator</a>", 'bot');
+                else if (text === '/help') addChatMessage("Commands: /dt, /weak, /learn, /calc", 'bot');
+                else setTimeout(() => addChatMessage("Unknown command.", 'bot'), 500);
+            }
+        });
+        function addChatMessage(msg, type) {
+            const chatBody = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = `chat-msg ${type}`;
+            div.innerHTML = msg;
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+        
+        async function handleDataCommand(query) {
+            const cleanQuery = query.toLowerCase().replace(/ /g, '-');
+            const pokemon = pokemonList.find(p => p.name === cleanQuery);
+            if (pokemon) {
+                const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
+                const html = `<div class="dt-card"><div class="dt-title">${fullP.name}</div><div class="dt-row"><span>Type:</span> <span>${fullP.types.join('/')}</span></div><div class="dt-row"><span>Stats:</span> <span>${fullP.stats.hp}/${fullP.stats.atk}/${fullP.stats.def}/${fullP.stats.spa}/${fullP.stats.spd}/${fullP.stats.spe}</span></div><div class="dt-row"><span>Ability:</span> <span>${fullP.ability}</span></div></div>`;
+                addChatMessage(html, 'bot');
+                return;
+            }
+            if (MASTER_MOVE_DEX[cleanQuery]) {
+                const m = MASTER_MOVE_DEX[cleanQuery];
+                addChatMessage(`<div class="dt-card"><div class="dt-title">${query}</div><div class="dt-row"><span>${m.type}</span> <span>${m.cat}</span></div><div class="dt-row"><span>Power:</span> <span>${m.power}</span></div></div>`, 'bot');
+                return;
+            }
+            addChatMessage("Not found.", 'bot');
+        }
+
+        async function handleWeaknessCommand(query) {
+            const cleanQuery = query.toLowerCase().replace(/ /g, '-');
+            let types = [];
+            const pokemon = pokemonList.find(p => p.name === cleanQuery);
+            if(pokemon) {
+                const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
+                types = fullP.types;
+            } else if (TYPE_CHART[cleanQuery]) {
+                types = [cleanQuery];
+            } else {
+                addChatMessage("Invalid input.", 'bot'); return;
+            }
+            let weaknesses = {};
+            Object.keys(TYPE_CHART).forEach(atk => {
+                let m = 1;
+                types.forEach(def => { if(TYPE_CHART[atk] && TYPE_CHART[atk][def]!==undefined) m *= TYPE_CHART[atk][def]; });
+                if(m > 1) weaknesses[atk] = m;
+            });
+            let msg = `<b>${query} Weak:</b> `;
+            for(const [t,m] of Object.entries(weaknesses)) msg += `${t} x${m}, `;
+            addChatMessage(msg, 'bot');
+        }
+
+        async function handleLearnCommand(query) {
+            const parts = query.split(',');
+            if(parts.length < 2) return addChatMessage("Usage: /learn mon, move", 'bot');
+            const pokeName = parts[0].trim().toLowerCase().replace(/ /g, '-');
+            const moveName = parts[1].trim().toLowerCase().replace(/ /g, '-');
+            const pokemon = pokemonList.find(p => p.name === pokeName);
+            if(!pokemon) return addChatMessage("Pokemon not found", 'bot');
+            const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
+            if(fullP.rawMoves.includes(moveName)) addChatMessage("Yes, learnable.", 'bot');
+            else addChatMessage("No, not learnable.", 'bot');
         }
     </script>
 </body>
