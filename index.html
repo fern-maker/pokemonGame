@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Live Fix</title>
+    <title>Pokémon Battle: Pro Stats Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -86,10 +86,13 @@
 
         .char-card img { width: 60px; height: 60px; image-rendering: pixelated; }
         .char-card p { color: white; font-size: 8px; margin-top: 5px; }
+        
+        .stat-preview { font-size: 6px; color: #aaa; margin-top: 4px; display: none; }
+        .char-card:hover .stat-preview { display: block; }
 
         @media(max-width: 600px) { .char-grid { grid-template-columns: repeat(3, 1fr); } }
 
-        /* --- BATTLE SCREEN --- */
+        /* --- BATTLE SCREEN LAYOUT --- */
         #game-container { 
             z-index: 10; width: 100%; height: 100%;
             justify-content: flex-start;
@@ -99,7 +102,6 @@
             flex: 1; width: 100%;
             position: relative; overflow: hidden;
             background-color: #4a804a;
-            /* Seamless Sky-to-Grass Gradient */
             background: linear-gradient(
                 to bottom, 
                 #64b0ff 0%,     
@@ -223,7 +225,7 @@
 
     <div id="intro-screen" class="screen active">
         <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
-        <p style="color: white; font-size: 10px; margin-bottom: 50px;">KANTO EDITION</p>
+        <p style="color: white; font-size: 10px; margin-bottom: 50px;">PRO EDITION</p>
         <button id="start-btn" onclick="startExperience()">PRESS START</button>
     </div>
 
@@ -277,20 +279,44 @@
     </audio>
 
     <script>
-        // --- DATABASE ---
+        // --- DATABASE WITH REAL STATS & MOVE CATEGORIES ---
+        // Stats: HP, Atk, Def, SpA, SpD, Spe
         const pokemonDB = [
-            { id: 3, name: "Venusaur", types: ["Grass", "Poison"], hp: 160, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png", moves: [{name: "Solar Beam", power: 60, type: "Grass"}, {name: "Sludge Bomb", power: 45, type: "Poison"}, {name: "Tackle", power: 20, type: "Normal"}, {name: "Synthesis", power: -50, type: "heal"}] },
-            { id: 6, name: "Charizard", types: ["Fire", "Flying"], hp: 160, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png", moves: [{name: "Flamethrower", power: 50, type: "Fire"}, {name: "Air Slash", power: 40, type: "Flying"}, {name: "Dragon Claw", power: 30, type: "Dragon"}, {name: "Roost", power: -50, type: "heal"}] },
-            { id: 9, name: "Blastoise", types: ["Water"], hp: 170, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png", moves: [{name: "Hydro Pump", power: 60, type: "Water"}, {name: "Ice Beam", power: 45, type: "Ice"}, {name: "Bite", power: 25, type: "Dark"}, {name: "Iron Defense", power: -50, type: "heal"}] },
-            { id: 25, name: "Pikachu", types: ["Electric"], hp: 120, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png", moves: [{name: "Thunderbolt", power: 50, type: "Electric"}, {name: "Quick Attack", power: 20, type: "Normal"}, {name: "Iron Tail", power: 30, type: "Steel"}, {name: "Potion", power: -50, type: "heal"}] },
-            { id: 68, name: "Machamp", types: ["Fighting"], hp: 180, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png", moves: [{name: "Cross Chop", power: 50, type: "Fighting"}, {name: "Rock Slide", power: 30, type: "Rock"}, {name: "Strength", power: 35, type: "Normal"}, {name: "Bulk Up", power: -40, type: "heal"}] },
-            { id: 94, name: "Gengar", types: ["Ghost", "Poison"], hp: 130, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png", moves: [{name: "Shadow Ball", power: 50, type: "Ghost"}, {name: "Sludge Bomb", power: 45, type: "Poison"}, {name: "Psychic", power: 40, type: "Psychic"}, {name: "Hypnosis", power: -40, type: "heal"}] },
-            { id: 130, name: "Gyarados", types: ["Water", "Flying"], hp: 180, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png", moves: [{name: "Hydro Pump", power: 60, type: "Water"}, {name: "Bite", power: 30, type: "Dark"}, {name: "Dragon Rage", power: 40, type: "Dragon"}, {name: "Splash", power: -10, type: "heal"}] },
-            { id: 143, name: "Snorlax", types: ["Normal"], hp: 250, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png", moves: [{name: "Body Slam", power: 50, type: "Normal"}, {name: "Earthquake", power: 45, type: "Ground"}, {name: "Crunch", power: 30, type: "Dark"}, {name: "Rest", power: -100, type: "heal"}] },
-            { id: 149, name: "Dragonite", types: ["Dragon", "Flying"], hp: 190, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png", moves: [{name: "Outrage", power: 60, type: "Dragon"}, {name: "Wing Attack", power: 40, type: "Flying"}, {name: "Thunder Punch", power: 30, type: "Electric"}, {name: "Roost", power: -50, type: "heal"}] },
-            { id: 150, name: "Mewtwo", types: ["Psychic"], hp: 180, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png", moves: [{name: "Psystrike", power: 65, type: "Psychic"}, {name: "Shadow Ball", power: 40, type: "Ghost"}, {name: "Aura Sphere", power: 40, type: "Fighting"}, {name: "Recover", power: -60, type: "heal"}] },
-            { id: 59, name: "Arcanine", types: ["Fire"], hp: 160, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png", moves: [{name: "Flare Blitz", power: 60, type: "Fire"}, {name: "Thunder Fang", power: 30, type: "Electric"}, {name: "Extreme Speed", power: 40, type: "Normal"}, {name: "Morning Sun", power: -50, type: "heal"}] },
-            { id: 76, name: "Golem", types: ["Rock", "Ground"], hp: 160, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png", moves: [{name: "Earthquake", power: 50, type: "Ground"}, {name: "Rock Throw", power: 30, type: "Rock"}, {name: "Double Edge", power: 40, type: "Normal"}, {name: "Defense Curl", power: -30, type: "heal"}] }
+            { id: 3, name: "Venusaur", types: ["Grass", "Poison"], stats: {hp:80, atk:82, def:83, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png", 
+              moves: [{name: "Solar Beam", power: 120, type: "Grass", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Synthesis", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 6, name: "Charizard", types: ["Fire", "Flying"], stats: {hp:78, atk:84, def:78, spa:109, spd:85, spe:100}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png", 
+              moves: [{name: "Flamethrower", power: 90, type: "Fire", cat: "Special"}, {name: "Air Slash", power: 75, type: "Flying", cat: "Special"}, {name: "Dragon Claw", power: 80, type: "Dragon", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 9, name: "Blastoise", types: ["Water"], stats: {hp:79, atk:83, def:100, spa:85, spd:105, spe:78}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png", 
+              moves: [{name: "Hydro Pump", power: 110, type: "Water", cat: "Special"}, {name: "Ice Beam", power: 90, type: "Ice", cat: "Special"}, {name: "Bite", power: 60, type: "Dark", cat: "Physical"}, {name: "Iron Defense", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 25, name: "Pikachu", types: ["Electric"], stats: {hp:35, atk:55, def:40, spa:50, spd:50, spe:90}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png", 
+              moves: [{name: "Thunderbolt", power: 90, type: "Electric", cat: "Special"}, {name: "Quick Attack", power: 40, type: "Normal", cat: "Physical"}, {name: "Iron Tail", power: 100, type: "Steel", cat: "Physical"}, {name: "Potion", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 68, name: "Machamp", types: ["Fighting"], stats: {hp:90, atk:130, def:80, spa:65, spd:85, spe:55}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png", 
+              moves: [{name: "Cross Chop", power: 100, type: "Fighting", cat: "Physical"}, {name: "Rock Slide", power: 75, type: "Rock", cat: "Physical"}, {name: "Strength", power: 80, type: "Normal", cat: "Physical"}, {name: "Bulk Up", power: -40, type: "heal", cat: "Status"}] },
+            
+            { id: 94, name: "Gengar", types: ["Ghost", "Poison"], stats: {hp:60, atk:65, def:60, spa:130, spd:75, spe:110}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png", 
+              moves: [{name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Psychic", power: 90, type: "Psychic", cat: "Special"}, {name: "Hypnosis", power: -40, type: "heal", cat: "Status"}] },
+            
+            { id: 130, name: "Gyarados", types: ["Water", "Flying"], stats: {hp:95, atk:125, def:79, spa:60, spd:100, spe:81}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png", 
+              moves: [{name: "Waterfall", power: 80, type: "Water", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Ice Fang", power: 65, type: "Ice", cat: "Physical"}, {name: "Dragon Dance", power: -30, type: "heal", cat: "Status"}] },
+            
+            { id: 143, name: "Snorlax", types: ["Normal"], stats: {hp:160, atk:110, def:65, spa:65, spd:110, spe:30}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png", 
+              moves: [{name: "Body Slam", power: 85, type: "Normal", cat: "Physical"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Rest", power: -100, type: "heal", cat: "Status"}] },
+            
+            { id: 149, name: "Dragonite", types: ["Dragon", "Flying"], stats: {hp:91, atk:134, def:95, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png", 
+              moves: [{name: "Outrage", power: 120, type: "Dragon", cat: "Physical"}, {name: "Wing Attack", power: 60, type: "Flying", cat: "Physical"}, {name: "Thunder Punch", power: 75, type: "Electric", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 150, name: "Mewtwo", types: ["Psychic"], stats: {hp:106, atk:110, def:90, spa:154, spd:90, spe:130}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png", 
+              moves: [{name: "Psystrike", power: 100, type: "Psychic", cat: "Special"}, {name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Aura Sphere", power: 80, type: "Fighting", cat: "Special"}, {name: "Recover", power: -60, type: "heal", cat: "Status"}] },
+            
+            { id: 59, name: "Arcanine", types: ["Fire"], stats: {hp:90, atk:110, def:80, spa:100, spd:80, spe:95}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png", 
+              moves: [{name: "Flare Blitz", power: 120, type: "Fire", cat: "Physical"}, {name: "Thunder Fang", power: 65, type: "Electric", cat: "Physical"}, {name: "Extreme Speed", power: 80, type: "Normal", cat: "Physical"}, {name: "Morning Sun", power: -50, type: "heal", cat: "Status"}] },
+            
+            { id: 76, name: "Golem", types: ["Rock", "Ground"], stats: {hp:80, atk:120, def:130, spa:55, spd:65, spe:45}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png", 
+              moves: [{name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Rock Throw", power: 50, type: "Rock", cat: "Physical"}, {name: "Double Edge", power: 120, type: "Normal", cat: "Physical"}, {name: "Defense Curl", power: -30, type: "heal", cat: "Status"}] }
         ];
 
         // --- TYPE CHART ---
@@ -314,27 +340,21 @@
             dark:     { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }
         };
 
-        // --- GAME VARIABLES ---
         let player = {};
         let enemy = {};
-        let isPlayerTurn = true;
+        let turnQueue = [];
         const bgm = document.getElementById('bgm');
         const dialogueBox = document.getElementById('dialogue-box');
 
-        // --- NAVIGATION ---
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
         }
 
         function startExperience() {
-            // Force play audio on first user gesture
             if(bgm.paused) { 
                 bgm.volume = 0.3; 
-                bgm.play().then(() => {
-                    console.log("Audio playing");
-                }).catch(e => {
-                    console.log("Audio prevented: ", e);
+                bgm.play().catch(e => {
                     document.getElementById('mute-btn').style.backgroundColor = '#f44336';
                     document.getElementById('mute-btn').innerText = "Audio Error";
                 });
@@ -348,7 +368,11 @@
             pokemonDB.forEach((p, index) => {
                 const card = document.createElement('div');
                 card.className = 'char-card';
-                card.innerHTML = `<img src="${p.front}" alt="${p.name}"><p>${p.name}</p>`;
+                card.innerHTML = `
+                    <img src="${p.front}" alt="${p.name}">
+                    <p>${p.name}</p>
+                    <div class="stat-preview">SPD: ${p.stats.spe} | ATK: ${p.stats.atk}</div>
+                `;
                 card.onclick = () => startGame(index);
                 grid.appendChild(card);
             });
@@ -362,41 +386,44 @@
         }
 
         function startGame(playerIndex) {
+            // Player Setup
             const pData = pokemonDB[playerIndex];
             player = JSON.parse(JSON.stringify(pData)); 
-            player.currHp = player.hp; player.maxHp = player.hp;
+            player.maxHp = Math.floor(pData.stats.hp + 60 + 50); // Lv50 HP Formula approx
+            player.currHp = player.maxHp;
+            player.isPlayer = true;
             
+            // Enemy Setup
             let enemyIndex = Math.floor(Math.random() * pokemonDB.length);
             while(enemyIndex === playerIndex) { enemyIndex = Math.floor(Math.random() * pokemonDB.length); }
             const eData = pokemonDB[enemyIndex];
             enemy = JSON.parse(JSON.stringify(eData));
-            enemy.currHp = enemy.hp; enemy.maxHp = enemy.hp;
+            enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50);
+            enemy.currHp = enemy.maxHp;
+            enemy.isPlayer = false;
 
-            // Render Player
+            // Render
             document.getElementById('player-img').src = player.back;
             document.getElementById('player-name').textContent = player.name;
             document.getElementById('player-type').textContent = player.types.join(" / ");
-            updateHealthUI(player, 'player');
+            updateHealthUI(player);
 
-            // Render Enemy
             document.getElementById('enemy-img').src = enemy.front;
             document.getElementById('enemy-img').style.opacity = "1";
             document.getElementById('enemy-name').textContent = enemy.name;
             document.getElementById('enemy-type').textContent = enemy.types.join(" / ");
-            updateHealthUI(enemy, 'enemy');
+            updateHealthUI(enemy);
 
-            // Render Moves
             const movesContainer = document.getElementById('moves-ui');
             movesContainer.innerHTML = "";
             player.moves.forEach((move, i) => {
                 const btn = document.createElement('button');
                 btn.className = "move-btn";
                 btn.textContent = move.name;
-                btn.onclick = () => playerAttack(i);
+                btn.onclick = () => handleTurn(i);
                 movesContainer.appendChild(btn);
             });
 
-            isPlayerTurn = true;
             document.getElementById('flash-overlay').style.opacity = '1';
             dialogueBox.textContent = `A wild ${enemy.name} appeared!`;
             
@@ -407,64 +434,92 @@
             }, 200);
         }
 
-        // --- BATTLE LOGIC ---
-        function playerAttack(moveIndex) {
-            if (!isPlayerTurn) return;
-            isPlayerTurn = false;
+        // --- SPEED & TURN LOGIC ---
+        function handleTurn(playerMoveIndex) {
             disableButtons(true);
-            executeMove(player, enemy, player.moves[moveIndex], 'player', () => {
-                if (enemy.currHp > 0) setTimeout(enemyTurn, 1000);
-            });
-        }
+            
+            const playerMove = player.moves[playerMoveIndex];
+            const enemyMove = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
 
-        function enemyTurn() {
-            const move = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
-            executeMove(enemy, player, move, 'enemy', () => {
-                if (player.currHp > 0) {
-                    isPlayerTurn = true;
-                    typeWriter(`What will ${player.name} do?`);
-                    disableButtons(false);
+            // Determine Order based on Speed Stats
+            // Note: In real games, priority moves matter (Quick Attack). For simplicity, we stick to Speed stat.
+            let first, second, firstMove, secondMove;
+
+            if (player.stats.spe >= enemy.stats.spe) {
+                first = player; firstMove = playerMove;
+                second = enemy; secondMove = enemyMove;
+            } else {
+                first = enemy; firstMove = enemyMove;
+                second = player; secondMove = playerMove;
+            }
+
+            // Execute Turn 1
+            executeMove(first, second, firstMove, () => {
+                if(second.currHp > 0) {
+                    // Execute Turn 2
+                    setTimeout(() => {
+                        executeMove(second, first, secondMove, () => {
+                            if(first.currHp > 0) {
+                                typeWriter(`What will ${player.name} do?`);
+                                disableButtons(false);
+                            }
+                        });
+                    }, 1000);
                 }
             });
         }
 
-        function executeMove(attacker, defender, move, role, callback) {
-            const attackerSprite = document.getElementById(role === 'player' ? 'player-img' : 'enemy-img');
-            const defenderSprite = document.getElementById(role === 'player' ? 'enemy-img' : 'player-img');
+        function executeMove(attacker, defender, move, callback) {
+            const attackerSprite = document.getElementById(attacker.isPlayer ? 'player-img' : 'enemy-img');
+            const defenderSprite = document.getElementById(attacker.isPlayer ? 'enemy-img' : 'player-img');
 
             typeWriter(`${attacker.name} used ${move.name}!`, () => {
-                const anim = role === 'player' ? 'lunge' : 'lunge-enemy';
+                const anim = attacker.isPlayer ? 'lunge' : 'lunge-enemy';
                 attackerSprite.classList.add(anim);
                 setTimeout(() => attackerSprite.classList.remove(anim), 300);
 
                 setTimeout(() => {
-                    if (move.type === 'heal') {
+                    if (move.cat === 'Status') {
+                        // Healing
                         const healAmount = Math.abs(move.power);
                         attacker.currHp = Math.min(attacker.maxHp, attacker.currHp + healAmount);
-                        updateHealthUI(attacker, role);
+                        updateHealthUI(attacker);
                         typeWriter(`${attacker.name} recovered HP!`, callback);
                     } else {
-                        // 1. TYPE EFFECTIVENESS
+                        // --- DAMAGE FORMULA ---
+                        // 1. Determine Stats (Physical vs Special)
+                        let A = (move.cat === "Physical") ? attacker.stats.atk : attacker.stats.spa;
+                        let D = (move.cat === "Physical") ? defender.stats.def : defender.stats.spd;
+                        
+                        // 2. Base Damage: ((2 * Lvl / 5 + 2) * Power * A / D) / 50 + 2
+                        // Level = 50 -> (22 * Power * A/D) / 50 + 2
+                        let baseDmg = ((22 * move.power * (A / D)) / 50) + 2;
+
+                        // 3. Modifiers
+                        // Type Effectiveness
                         let multiplier = 1.0;
                         defender.types.forEach(t => {
                             const map = TYPE_CHART[move.type.toLowerCase()];
                             if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()];
                         });
 
-                        // 2. STAB (Same Type Attack Bonus)
+                        // STAB
                         let stab = 1.0;
-                        if (attacker.types.includes(move.type)) {
-                            stab = 1.5;
-                        }
+                        if (attacker.types.includes(move.type)) stab = 1.5;
 
-                        // 3. DAMAGE CALC
-                        let damage = Math.floor(move.power * multiplier * stab * (0.85 + Math.random() * 0.15));
+                        // Random (0.85 - 1.00)
+                        let random = (Math.floor(Math.random() * 16) + 85) / 100;
+
+                        // Final Calc
+                        let damage = Math.floor(baseDmg * multiplier * stab * random);
                         
-                        const isCrit = Math.random() < 0.1;
+                        // Crit (1/16 chance)
+                        const isCrit = Math.random() < 0.0625;
                         if(isCrit) damage = Math.floor(damage * 1.5);
 
+                        // Apply
                         defender.currHp = Math.max(0, defender.currHp - damage);
-                        updateHealthUI(defender, role === 'player' ? 'enemy' : 'player');
+                        updateHealthUI(defender);
                         
                         defenderSprite.classList.add('shake');
                         setTimeout(() => defenderSprite.classList.remove('shake'), 500);
@@ -475,6 +530,7 @@
                             else if(multiplier === 0) msg = "It had no effect...";
                             else if(multiplier < 1) msg = "It's not very effective...";
                             if(isCrit) msg += (msg ? " " : "") + "Critical hit!";
+                            
                             if(msg) typeWriter(msg, () => checkFaint(defender, callback));
                             else checkFaint(defender, callback);
                         }, 600);
@@ -485,10 +541,10 @@
 
         function checkFaint(char, cb) {
             if (char.currHp <= 0) {
-                const sprite = document.getElementById(char === player ? 'player-img' : 'enemy-img');
+                const sprite = document.getElementById(char.isPlayer ? 'player-img' : 'enemy-img');
                 typeWriter(`${char.name} fainted!`, () => {
                     sprite.style.opacity = '0';
-                    if (char === player) typeWriter("You lost...", showReset);
+                    if (char.isPlayer) typeWriter("You lost...", showReset);
                     else typeWriter("You won!", showReset);
                 });
             } else {
@@ -497,14 +553,18 @@
         }
 
         // --- UTILS ---
-        function updateHealthUI(char, role) {
+        function updateHealthUI(char) {
+            const role = char.isPlayer ? 'player' : 'enemy';
             const bar = document.getElementById(`${role}-hp-bar`);
             const pct = (char.currHp / char.maxHp) * 100;
             bar.style.width = pct + "%";
             if(pct > 50) bar.style.backgroundColor = "#4caf50";
             else if(pct > 20) bar.style.backgroundColor = "#ffeb3b";
             else bar.style.backgroundColor = "#f44336";
-            if(role === 'player') document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
+            
+            if(char.isPlayer) {
+                document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
+            }
         }
 
         function typeWriter(text, cb) {
