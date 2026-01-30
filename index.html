@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Pro Stats Edition</title>
+    <title>Pokémon Battle: Select Opponent</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -64,7 +64,7 @@
             background-color: #333; z-index: 20; padding: 20px;
         }
         
-        h2 { color: white; margin-bottom: 20px; font-size: 16px; text-transform: uppercase; }
+        h2 { color: white; margin-bottom: 20px; font-size: 16px; text-transform: uppercase; text-align: center; line-height: 1.5;}
 
         .char-grid {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;
@@ -83,6 +83,13 @@
             transform: scale(1.1); background: #555; border-color: var(--pokemon-yellow);
             z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
+
+        /* Random Card Special Style */
+        .char-card.random-card {
+            border-color: #ffd700;
+            background: #222;
+        }
+        .char-card.random-card p { color: #ffd700; }
 
         .char-card img { width: 60px; height: 60px; image-rendering: pixelated; }
         .char-card p { color: white; font-size: 8px; margin-top: 5px; }
@@ -230,7 +237,7 @@
     </div>
 
     <div id="select-screen" class="screen">
-        <h2>Choose Your Pokémon</h2>
+        <h2 id="select-title">Choose Your Pokémon</h2>
         <div class="char-grid" id="char-grid"></div>
     </div>
 
@@ -279,44 +286,20 @@
     </audio>
 
     <script>
-        // --- DATABASE WITH REAL STATS & MOVE CATEGORIES ---
-        // Stats: HP, Atk, Def, SpA, SpD, Spe
+        // --- DATABASE ---
         const pokemonDB = [
-            { id: 3, name: "Venusaur", types: ["Grass", "Poison"], stats: {hp:80, atk:82, def:83, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png", 
-              moves: [{name: "Solar Beam", power: 120, type: "Grass", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Synthesis", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 6, name: "Charizard", types: ["Fire", "Flying"], stats: {hp:78, atk:84, def:78, spa:109, spd:85, spe:100}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png", 
-              moves: [{name: "Flamethrower", power: 90, type: "Fire", cat: "Special"}, {name: "Air Slash", power: 75, type: "Flying", cat: "Special"}, {name: "Dragon Claw", power: 80, type: "Dragon", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 9, name: "Blastoise", types: ["Water"], stats: {hp:79, atk:83, def:100, spa:85, spd:105, spe:78}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png", 
-              moves: [{name: "Hydro Pump", power: 110, type: "Water", cat: "Special"}, {name: "Ice Beam", power: 90, type: "Ice", cat: "Special"}, {name: "Bite", power: 60, type: "Dark", cat: "Physical"}, {name: "Iron Defense", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 25, name: "Pikachu", types: ["Electric"], stats: {hp:35, atk:55, def:40, spa:50, spd:50, spe:90}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png", 
-              moves: [{name: "Thunderbolt", power: 90, type: "Electric", cat: "Special"}, {name: "Quick Attack", power: 40, type: "Normal", cat: "Physical"}, {name: "Iron Tail", power: 100, type: "Steel", cat: "Physical"}, {name: "Potion", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 68, name: "Machamp", types: ["Fighting"], stats: {hp:90, atk:130, def:80, spa:65, spd:85, spe:55}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png", 
-              moves: [{name: "Cross Chop", power: 100, type: "Fighting", cat: "Physical"}, {name: "Rock Slide", power: 75, type: "Rock", cat: "Physical"}, {name: "Strength", power: 80, type: "Normal", cat: "Physical"}, {name: "Bulk Up", power: -40, type: "heal", cat: "Status"}] },
-            
-            { id: 94, name: "Gengar", types: ["Ghost", "Poison"], stats: {hp:60, atk:65, def:60, spa:130, spd:75, spe:110}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png", 
-              moves: [{name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Psychic", power: 90, type: "Psychic", cat: "Special"}, {name: "Hypnosis", power: -40, type: "heal", cat: "Status"}] },
-            
-            { id: 130, name: "Gyarados", types: ["Water", "Flying"], stats: {hp:95, atk:125, def:79, spa:60, spd:100, spe:81}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png", 
-              moves: [{name: "Waterfall", power: 80, type: "Water", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Ice Fang", power: 65, type: "Ice", cat: "Physical"}, {name: "Dragon Dance", power: -30, type: "heal", cat: "Status"}] },
-            
-            { id: 143, name: "Snorlax", types: ["Normal"], stats: {hp:160, atk:110, def:65, spa:65, spd:110, spe:30}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png", 
-              moves: [{name: "Body Slam", power: 85, type: "Normal", cat: "Physical"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Rest", power: -100, type: "heal", cat: "Status"}] },
-            
-            { id: 149, name: "Dragonite", types: ["Dragon", "Flying"], stats: {hp:91, atk:134, def:95, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png", 
-              moves: [{name: "Outrage", power: 120, type: "Dragon", cat: "Physical"}, {name: "Wing Attack", power: 60, type: "Flying", cat: "Physical"}, {name: "Thunder Punch", power: 75, type: "Electric", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 150, name: "Mewtwo", types: ["Psychic"], stats: {hp:106, atk:110, def:90, spa:154, spd:90, spe:130}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png", 
-              moves: [{name: "Psystrike", power: 100, type: "Psychic", cat: "Special"}, {name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Aura Sphere", power: 80, type: "Fighting", cat: "Special"}, {name: "Recover", power: -60, type: "heal", cat: "Status"}] },
-            
-            { id: 59, name: "Arcanine", types: ["Fire"], stats: {hp:90, atk:110, def:80, spa:100, spd:80, spe:95}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png", 
-              moves: [{name: "Flare Blitz", power: 120, type: "Fire", cat: "Physical"}, {name: "Thunder Fang", power: 65, type: "Electric", cat: "Physical"}, {name: "Extreme Speed", power: 80, type: "Normal", cat: "Physical"}, {name: "Morning Sun", power: -50, type: "heal", cat: "Status"}] },
-            
-            { id: 76, name: "Golem", types: ["Rock", "Ground"], stats: {hp:80, atk:120, def:130, spa:55, spd:65, spe:45}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png", 
-              moves: [{name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Rock Throw", power: 50, type: "Rock", cat: "Physical"}, {name: "Double Edge", power: 120, type: "Normal", cat: "Physical"}, {name: "Defense Curl", power: -30, type: "heal", cat: "Status"}] }
+            { id: 3, name: "Venusaur", types: ["Grass", "Poison"], stats: {hp:80, atk:82, def:83, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png", moves: [{name: "Solar Beam", power: 120, type: "Grass", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Synthesis", power: -50, type: "heal", cat: "Status"}] },
+            { id: 6, name: "Charizard", types: ["Fire", "Flying"], stats: {hp:78, atk:84, def:78, spa:109, spd:85, spe:100}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png", moves: [{name: "Flamethrower", power: 90, type: "Fire", cat: "Special"}, {name: "Air Slash", power: 75, type: "Flying", cat: "Special"}, {name: "Dragon Claw", power: 80, type: "Dragon", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
+            { id: 9, name: "Blastoise", types: ["Water"], stats: {hp:79, atk:83, def:100, spa:85, spd:105, spe:78}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png", moves: [{name: "Hydro Pump", power: 110, type: "Water", cat: "Special"}, {name: "Ice Beam", power: 90, type: "Ice", cat: "Special"}, {name: "Bite", power: 60, type: "Dark", cat: "Physical"}, {name: "Iron Defense", power: -50, type: "heal", cat: "Status"}] },
+            { id: 25, name: "Pikachu", types: ["Electric"], stats: {hp:35, atk:55, def:40, spa:50, spd:50, spe:90}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png", moves: [{name: "Thunderbolt", power: 90, type: "Electric", cat: "Special"}, {name: "Quick Attack", power: 40, type: "Normal", cat: "Physical"}, {name: "Iron Tail", power: 100, type: "Steel", cat: "Physical"}, {name: "Potion", power: -50, type: "heal", cat: "Status"}] },
+            { id: 68, name: "Machamp", types: ["Fighting"], stats: {hp:90, atk:130, def:80, spa:65, spd:85, spe:55}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png", moves: [{name: "Cross Chop", power: 100, type: "Fighting", cat: "Physical"}, {name: "Rock Slide", power: 75, type: "Rock", cat: "Physical"}, {name: "Strength", power: 80, type: "Normal", cat: "Physical"}, {name: "Bulk Up", power: -40, type: "heal", cat: "Status"}] },
+            { id: 94, name: "Gengar", types: ["Ghost", "Poison"], stats: {hp:60, atk:65, def:60, spa:130, spd:75, spe:110}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png", moves: [{name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Psychic", power: 90, type: "Psychic", cat: "Special"}, {name: "Hypnosis", power: -40, type: "heal", cat: "Status"}] },
+            { id: 130, name: "Gyarados", types: ["Water", "Flying"], stats: {hp:95, atk:125, def:79, spa:60, spd:100, spe:81}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png", moves: [{name: "Waterfall", power: 80, type: "Water", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Ice Fang", power: 65, type: "Ice", cat: "Physical"}, {name: "Dragon Dance", power: -30, type: "heal", cat: "Status"}] },
+            { id: 143, name: "Snorlax", types: ["Normal"], stats: {hp:160, atk:110, def:65, spa:65, spd:110, spe:30}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png", moves: [{name: "Body Slam", power: 85, type: "Normal", cat: "Physical"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Rest", power: -100, type: "heal", cat: "Status"}] },
+            { id: 149, name: "Dragonite", types: ["Dragon", "Flying"], stats: {hp:91, atk:134, def:95, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png", moves: [{name: "Outrage", power: 120, type: "Dragon", cat: "Physical"}, {name: "Wing Attack", power: 60, type: "Flying", cat: "Physical"}, {name: "Thunder Punch", power: 75, type: "Electric", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
+            { id: 150, name: "Mewtwo", types: ["Psychic"], stats: {hp:106, atk:110, def:90, spa:154, spd:90, spe:130}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png", moves: [{name: "Psystrike", power: 100, type: "Psychic", cat: "Special"}, {name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Aura Sphere", power: 80, type: "Fighting", cat: "Special"}, {name: "Recover", power: -60, type: "heal", cat: "Status"}] },
+            { id: 59, name: "Arcanine", types: ["Fire"], stats: {hp:90, atk:110, def:80, spa:100, spd:80, spe:95}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png", moves: [{name: "Flare Blitz", power: 120, type: "Fire", cat: "Physical"}, {name: "Thunder Fang", power: 65, type: "Electric", cat: "Physical"}, {name: "Extreme Speed", power: 80, type: "Normal", cat: "Physical"}, {name: "Morning Sun", power: -50, type: "heal", cat: "Status"}] },
+            { id: 76, name: "Golem", types: ["Rock", "Ground"], stats: {hp:80, atk:120, def:130, spa:55, spd:65, spe:45}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png", moves: [{name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Rock Throw", power: 50, type: "Rock", cat: "Physical"}, {name: "Double Edge", power: 120, type: "Normal", cat: "Physical"}, {name: "Defense Curl", power: -30, type: "heal", cat: "Status"}] }
         ];
 
         // --- TYPE CHART ---
@@ -340,12 +323,15 @@
             dark:     { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }
         };
 
+        // --- GAME VARIABLES ---
         let player = {};
         let enemy = {};
-        let turnQueue = [];
+        let selectedPlayerIndex = null;
+        let selectionPhase = 'player'; // 'player' or 'enemy'
         const bgm = document.getElementById('bgm');
         const dialogueBox = document.getElementById('dialogue-box');
 
+        // --- NAVIGATION ---
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
@@ -363,8 +349,30 @@
         }
 
         function goToSelect() {
+            selectionPhase = 'player';
+            selectedPlayerIndex = null;
+            document.getElementById('select-title').innerText = "Choose Your Pokémon";
+            renderSelectionGrid();
+            switchScreen('select-screen');
+        }
+
+        function renderSelectionGrid() {
             const grid = document.getElementById('char-grid');
             grid.innerHTML = "";
+
+            // If choosing Enemy, Add Random Button First
+            if (selectionPhase === 'enemy') {
+                const randomCard = document.createElement('div');
+                randomCard.className = 'char-card random-card';
+                randomCard.innerHTML = `
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random">
+                    <p>Random</p>
+                `;
+                randomCard.onclick = () => handleSelection(-1); // -1 indicates random
+                grid.appendChild(randomCard);
+            }
+
+            // Render Standard Roster
             pokemonDB.forEach((p, index) => {
                 const card = document.createElement('div');
                 card.className = 'char-card';
@@ -373,10 +381,31 @@
                     <p>${p.name}</p>
                     <div class="stat-preview">SPD: ${p.stats.spe} | ATK: ${p.stats.atk}</div>
                 `;
-                card.onclick = () => startGame(index);
+                card.onclick = () => handleSelection(index);
                 grid.appendChild(card);
             });
-            switchScreen('select-screen');
+        }
+
+        function handleSelection(index) {
+            if (selectionPhase === 'player') {
+                // Phase 1: Player Picked
+                selectedPlayerIndex = index;
+                selectionPhase = 'enemy';
+                document.getElementById('select-title').innerText = "Choose Opponent";
+                renderSelectionGrid(); // Re-render to show Random button
+            } else {
+                // Phase 2: Enemy Picked
+                let enemyIndex = index;
+                
+                // Handle Random Choice
+                if (enemyIndex === -1) {
+                    enemyIndex = Math.floor(Math.random() * pokemonDB.length);
+                    // Optional: Avoid mirror match on random? (Uncomment below)
+                    // while(enemyIndex === selectedPlayerIndex) { enemyIndex = Math.floor(Math.random() * pokemonDB.length); }
+                }
+
+                startGame(selectedPlayerIndex, enemyIndex);
+            }
         }
 
         function resetToSelect() {
@@ -385,18 +414,16 @@
             document.getElementById('reset-ui').style.display = 'none';
         }
 
-        function startGame(playerIndex) {
+        function startGame(pIndex, eIndex) {
             // Player Setup
-            const pData = pokemonDB[playerIndex];
+            const pData = pokemonDB[pIndex];
             player = JSON.parse(JSON.stringify(pData)); 
-            player.maxHp = Math.floor(pData.stats.hp + 60 + 50); // Lv50 HP Formula approx
+            player.maxHp = Math.floor(pData.stats.hp + 60 + 50); 
             player.currHp = player.maxHp;
             player.isPlayer = true;
             
             // Enemy Setup
-            let enemyIndex = Math.floor(Math.random() * pokemonDB.length);
-            while(enemyIndex === playerIndex) { enemyIndex = Math.floor(Math.random() * pokemonDB.length); }
-            const eData = pokemonDB[enemyIndex];
+            const eData = pokemonDB[eIndex];
             enemy = JSON.parse(JSON.stringify(eData));
             enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50);
             enemy.currHp = enemy.maxHp;
@@ -441,8 +468,6 @@
             const playerMove = player.moves[playerMoveIndex];
             const enemyMove = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
 
-            // Determine Order based on Speed Stats
-            // Note: In real games, priority moves matter (Quick Attack). For simplicity, we stick to Speed stat.
             let first, second, firstMove, secondMove;
 
             if (player.stats.spe >= enemy.stats.spe) {
@@ -453,10 +478,8 @@
                 second = player; secondMove = playerMove;
             }
 
-            // Execute Turn 1
             executeMove(first, second, firstMove, () => {
                 if(second.currHp > 0) {
-                    // Execute Turn 2
                     setTimeout(() => {
                         executeMove(second, first, secondMove, () => {
                             if(first.currHp > 0) {
@@ -480,44 +503,30 @@
 
                 setTimeout(() => {
                     if (move.cat === 'Status') {
-                        // Healing
                         const healAmount = Math.abs(move.power);
                         attacker.currHp = Math.min(attacker.maxHp, attacker.currHp + healAmount);
                         updateHealthUI(attacker);
                         typeWriter(`${attacker.name} recovered HP!`, callback);
                     } else {
-                        // --- DAMAGE FORMULA ---
-                        // 1. Determine Stats (Physical vs Special)
                         let A = (move.cat === "Physical") ? attacker.stats.atk : attacker.stats.spa;
                         let D = (move.cat === "Physical") ? defender.stats.def : defender.stats.spd;
-                        
-                        // 2. Base Damage: ((2 * Lvl / 5 + 2) * Power * A / D) / 50 + 2
-                        // Level = 50 -> (22 * Power * A/D) / 50 + 2
                         let baseDmg = ((22 * move.power * (A / D)) / 50) + 2;
 
-                        // 3. Modifiers
-                        // Type Effectiveness
                         let multiplier = 1.0;
                         defender.types.forEach(t => {
                             const map = TYPE_CHART[move.type.toLowerCase()];
                             if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()];
                         });
 
-                        // STAB
                         let stab = 1.0;
                         if (attacker.types.includes(move.type)) stab = 1.5;
 
-                        // Random (0.85 - 1.00)
                         let random = (Math.floor(Math.random() * 16) + 85) / 100;
-
-                        // Final Calc
                         let damage = Math.floor(baseDmg * multiplier * stab * random);
                         
-                        // Crit (1/16 chance)
                         const isCrit = Math.random() < 0.0625;
                         if(isCrit) damage = Math.floor(damage * 1.5);
 
-                        // Apply
                         defender.currHp = Math.max(0, defender.currHp - damage);
                         updateHealthUI(defender);
                         
@@ -552,7 +561,6 @@
             }
         }
 
-        // --- UTILS ---
         function updateHealthUI(char) {
             const role = char.isPlayer ? 'player' : 'enemy';
             const bar = document.getElementById(`${role}-hp-bar`);
