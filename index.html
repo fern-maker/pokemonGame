@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Better Background</title>
+    <title>Pokémon Battle: Fixed Background</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -95,16 +95,23 @@
             justify-content: flex-start;
         }
 
-        /* UPDATED BATTLE SCENE BACKGROUND */
+        /* FIXED BACKGROUND:
+           Instead of an image URL that might break, we use CSS Gradients 
+           to draw the Sky and Grass. This is 100% reliable.
+        */
         .battle-scene {
             flex: 1; width: 100%;
             position: relative; overflow: hidden;
-            /* New Background Image */
-            background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/battle_backgrounds/1.png');
-            background-size: cover;
-            background-position: center bottom;
-            /* Ensures pixels stay sharp when scaled */
-            image-rendering: pixelated; 
+            
+            /* Fallback Color */
+            background-color: #87CEEB; 
+
+            /* Complex Gradient: Top 60% Sky, Bottom 40% Grass */
+            background: 
+                /* Grass Gradient (Green to Dark Green) */
+                linear-gradient(to bottom, #70c070 0%, #4a804a 100%) 0 60% / 100% 40% no-repeat,
+                /* Sky Gradient (Blue to Light Blue) */
+                linear-gradient(to bottom, #87CEEB 0%, #b0e0f0 100%) 0 0 / 100% 60% no-repeat;
         }
 
         /* HUD STYLES */
@@ -156,13 +163,13 @@
             filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4));
         }
 
-        /* UPDATED PLATFORMS (Now Shadows) */
+        /* SHADOWS (Replaces Platforms) */
         .platform {
             width: 120%; height: 30%;
             background-color: #000; /* Black shadow */
             border-radius: 50%;
             position: absolute; bottom: 5%; left: -10%;
-            border: none; /* Remove green border */
+            border: none;
             opacity: 0.3; /* Make transparent */
             transform: scaleY(0.4); z-index: 1;
             filter: blur(8px); /* Soften edges */
