@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Fixed Background</title>
+    <title>Pokémon Battle: Live Fix</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -89,24 +89,23 @@
 
         @media(max-width: 600px) { .char-grid { grid-template-columns: repeat(3, 1fr); } }
 
-        /* --- BATTLE SCREEN LAYOUT --- */
+        /* --- BATTLE SCREEN --- */
         #game-container { 
             z-index: 10; width: 100%; height: 100%;
             justify-content: flex-start;
         }
 
-        /* FIXED BACKGROUND */
         .battle-scene {
             flex: 1; width: 100%;
             position: relative; overflow: hidden;
-            background-color: #4a804a; /* Fallback Green */
+            background-color: #4a804a;
             /* Seamless Sky-to-Grass Gradient */
             background: linear-gradient(
                 to bottom, 
-                #64b0ff 0%,     /* Sky Top */
-                #a0d8ef 55%,    /* Sky Horizon */
-                #70c070 55%,    /* Grass Horizon */
-                #4a804a 100%    /* Grass Foreground */
+                #64b0ff 0%,     
+                #a0d8ef 55%,    
+                #70c070 55%,    
+                #4a804a 100%    
             );
         }
 
@@ -124,11 +123,9 @@
             border-bottom-right-radius: 25px; 
         }
 
-        /* HUD POSITIONS */
         #enemy-hud { top: 40px; left: 40px; }
         #player-hud { bottom: 40px; right: 40px; }
 
-        /* HUD CONTENT */
         .hp-bar-bg {
             width: 100%; height: 12px; background-color: #ddd;
             margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden;
@@ -159,22 +156,21 @@
             filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4));
         }
 
-        /* PLATFORMS (Restored to visible ovals) */
+        /* PLATFORMS */
         .platform {
             width: 80%; height: 30%;
-            background-color: #e0eec0; /* Light Grass Color */
-            border: 4px solid #6b8c42; /* Dark Green Border */
+            background-color: #e0eec0;
+            border: 4px solid #6b8c42;
             border-radius: 50%;
             position: absolute; 
-            bottom: 20px; /* Position under feet */
-            left: 10%;    /* Center horizontally in container */
+            bottom: 20px; 
+            left: 10%;    
             opacity: 0.9; 
             transform: scaleY(0.4); 
             z-index: 1;
             box-shadow: 0 10px 0 rgba(0,0,0,0.1);
         }
 
-        /* MOBILE ADJUSTMENTS */
         @media (max-width: 600px) {
             #enemy-hud { top: 10px; left: 10px; width: 200px; padding: 8px; }
             #player-hud { bottom: 10px; right: 10px; width: 200px; padding: 8px; }
@@ -228,7 +224,7 @@
     <div id="intro-screen" class="screen active">
         <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
         <p style="color: white; font-size: 10px; margin-bottom: 50px;">KANTO EDITION</p>
-        <button id="start-btn" onclick="goToSelect()">PRESS START</button>
+        <button id="start-btn" onclick="startExperience()">PRESS START</button>
     </div>
 
     <div id="select-screen" class="screen">
@@ -277,7 +273,7 @@
     <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
 
     <audio id="bgm" loop crossorigin="anonymous">
-        <source src="https://raw.githubusercontent.com/Jaysmito101/Pokemon-Battle/master/assets/music/battle.mp3" type="audio/mpeg">
+        <source src="https://play.pokemonshowdown.com/audio/bgm/rby-trainer.mp3" type="audio/mpeg">
     </audio>
 
     <script>
@@ -331,6 +327,21 @@
             document.getElementById(screenId).classList.add('active');
         }
 
+        function startExperience() {
+            // Force play audio on first user gesture
+            if(bgm.paused) { 
+                bgm.volume = 0.3; 
+                bgm.play().then(() => {
+                    console.log("Audio playing");
+                }).catch(e => {
+                    console.log("Audio prevented: ", e);
+                    document.getElementById('mute-btn').style.backgroundColor = '#f44336';
+                    document.getElementById('mute-btn').innerText = "Audio Error";
+                });
+            }
+            goToSelect();
+        }
+
         function goToSelect() {
             const grid = document.getElementById('char-grid');
             grid.innerHTML = "";
@@ -342,7 +353,6 @@
                 grid.appendChild(card);
             });
             switchScreen('select-screen');
-            if(bgm.paused) { bgm.volume=0.3; bgm.play().catch(e=>console.log(e)); }
         }
 
         function resetToSelect() {
