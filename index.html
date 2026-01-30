@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Random Player</title>
+    <title>Pokémon Battle: Full Kanto Dex</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -37,7 +37,7 @@
         
         .screen.active { display: flex; }
 
-        /* INTRO SCREEN */
+        /* INTRO & LOADING */
         #intro-screen {
             background-color: #222;
             background-image: radial-gradient(#333 15%, transparent 16%), radial-gradient(#333 15%, transparent 16%);
@@ -47,8 +47,22 @@
 
         .title-text {
             color: var(--pokemon-yellow); text-shadow: 4px 4px 0px var(--pokemon-blue);
-            font-size: clamp(20px, 4vw, 50px); line-height: 1.5; margin-bottom: 50px;
+            font-size: clamp(20px, 4vw, 50px); line-height: 1.5; margin-bottom: 30px;
             animation: dropIn 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        #loading-container {
+            width: 300px;
+            text-align: center;
+        }
+
+        #loading-bar-bg {
+            width: 100%; height: 20px; border: 2px solid white; padding: 2px; margin-top: 10px;
+        }
+        
+        #loading-bar-fill {
+            width: 0%; height: 100%; background-color: var(--pokemon-blue);
+            transition: width 0.1s;
         }
 
         #start-btn {
@@ -56,127 +70,96 @@
             background: transparent; color: white; border: none;
             font-family: 'Press Start 2P', cursive; cursor: pointer;
             animation: blink 1s infinite step-end;
+            display: none; /* Hidden until loaded */
         }
         #start-btn:hover { transform: scale(1.1); color: var(--pokemon-yellow); }
 
         /* SELECTION SCREEN */
-        #select-screen {
-            background-color: #333; z-index: 20; padding: 20px;
-        }
+        #select-screen { background-color: #333; z-index: 20; padding: 20px; }
         
-        h2 { color: white; margin-bottom: 20px; font-size: 16px; text-transform: uppercase; text-align: center; line-height: 1.5;}
+        .select-header {
+            display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 800px;
+        }
+
+        h2 { color: white; font-size: 16px; text-transform: uppercase; margin: 0; text-align: center; line-height: 1.5; }
+
+        #search-bar {
+            padding: 10px; width: 100%; font-family: 'Press Start 2P', cursive;
+            background: #222; border: 2px solid #555; color: white; font-size: 10px;
+        }
 
         .char-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;
-            max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 15px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;
+            max-width: 900px; width: 95%; height: 70vh; overflow-y: auto; padding: 15px;
+            border: 2px solid #444; background: #222;
         }
 
         .char-card {
             background: #444; border: 2px solid #666; border-radius: 8px;
             cursor: pointer; text-align: center; padding: 10px;
-            transition: transform 0.2s, background 0.2s, z-index 0s;
+            transition: transform 0.1s, background 0.2s, z-index 0s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative;
+            position: relative; min-height: 110px;
         }
         
         .char-card:hover {
             transform: scale(1.1); background: #555; border-color: var(--pokemon-yellow);
-            z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            z-index: 100; box-shadow: 0 0 15px rgba(0,0,0,0.8);
         }
 
-        .char-card.random-card {
-            border-color: #ffd700;
-            background: #222;
-        }
+        .char-card.random-card { border-color: #ffd700; background: #2a2a2a; }
         .char-card.random-card p { color: #ffd700; }
 
-        .char-card img { width: 60px; height: 60px; image-rendering: pixelated; }
-        .char-card p { color: white; font-size: 8px; margin-top: 5px; }
+        .char-card img { width: 70px; height: 70px; image-rendering: pixelated; }
+        .char-card p { color: white; font-size: 7px; margin-top: 5px; line-height: 1.2; text-transform: capitalize;}
         
-        .stat-preview { font-size: 6px; color: #aaa; margin-top: 4px; display: none; }
-        .char-card:hover .stat-preview { display: block; }
+        .stat-preview { font-size: 5px; color: #aaa; margin-top: 4px; display: none; width: 100%; justify-content: space-around;}
+        .char-card:hover .stat-preview { display: flex; }
 
-        @media(max-width: 600px) { .char-grid { grid-template-columns: repeat(3, 1fr); } }
-
-        /* --- BATTLE SCREEN LAYOUT --- */
-        #game-container { 
-            z-index: 10; width: 100%; height: 100%;
-            justify-content: flex-start;
-        }
+        /* BATTLE SCREEN */
+        #game-container { z-index: 10; width: 100%; height: 100%; justify-content: flex-start; }
 
         .battle-scene {
-            flex: 1; width: 100%;
-            position: relative; overflow: hidden;
-            background-color: #4a804a;
-            background: linear-gradient(
-                to bottom, 
-                #64b0ff 0%,     
-                #a0d8ef 55%,    
-                #70c070 55%,    
-                #4a804a 100%    
-            );
+            flex: 1; width: 100%; position: relative; overflow: hidden;
+            background: linear-gradient(to bottom, #64b0ff 0%, #a0d8ef 55%, #70c070 55%, #4a804a 100%);
         }
 
-        /* HUD STYLES */
+        /* HUD */
         .hud {
-            position: absolute;
-            background: rgba(248, 248, 248, 0.95);
-            border: 4px solid #444;
-            border-radius: 12px;
-            padding: 15px;
-            width: 320px;
-            max-width: 45%;
-            z-index: 10;
-            box-shadow: 5px 5px 0 rgba(0,0,0,0.2);
-            border-bottom-right-radius: 25px; 
+            position: absolute; background: rgba(248, 248, 248, 0.95);
+            border: 4px solid #444; border-radius: 12px; padding: 15px; width: 320px; max-width: 45%;
+            z-index: 10; box-shadow: 5px 5px 0 rgba(0,0,0,0.2); border-bottom-right-radius: 25px; 
         }
-
         #enemy-hud { top: 40px; left: 40px; }
         #player-hud { bottom: 40px; right: 40px; }
 
         .hp-bar-bg {
-            width: 100%; height: 12px; background-color: #ddd;
-            margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden;
+            width: 100%; height: 12px; background-color: #ddd; margin-top: 8px; border: 2px solid #333; border-radius: 6px; overflow: hidden;
         }
         .hp-bar-fill {
-            height: 100%; width: 100%; background-color: var(--hp-green);
-            transition: width 0.5s ease, background-color 0.5s ease;
+            height: 100%; width: 100%; background-color: var(--hp-green); transition: width 0.5s ease, background-color 0.5s ease;
         }
         .info-text {
-            font-size: clamp(10px, 1.2vw, 14px); margin-bottom: 5px;
-            display: flex; justify-content: space-between; color: #333;
+            font-size: clamp(10px, 1.2vw, 14px); margin-bottom: 5px; display: flex; justify-content: space-between; color: #333; text-transform: capitalize;
         }
         .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; color: #333;}
 
-        /* SPRITE POSITIONS */
+        /* SPRITES */
         .sprite-container {
-            position: absolute;
-            z-index: 5;
-            display: flex; justify-content: center; align-items: flex-end;
+            position: absolute; z-index: 5; display: flex; justify-content: center; align-items: flex-end;
         }
-
         #enemy-pos { top: 15%; right: 15%; width: 250px; height: 250px; }
         #player-pos { bottom: 8%; left: 10%; width: 250px; height: 250px; }
 
         .sprite-image {
-            width: 100%; image-rendering: pixelated; 
-            position: relative; z-index: 2;
+            width: 100%; image-rendering: pixelated; position: relative; z-index: 2;
             filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4));
         }
 
-        /* PLATFORMS */
         .platform {
-            width: 80%; height: 30%;
-            background-color: #e0eec0;
-            border: 4px solid #6b8c42;
-            border-radius: 50%;
-            position: absolute; 
-            bottom: 20px; 
-            left: 10%;    
-            opacity: 0.9; 
-            transform: scaleY(0.4); 
-            z-index: 1;
-            box-shadow: 0 10px 0 rgba(0,0,0,0.1);
+            width: 80%; height: 30%; background-color: #e0eec0; border: 4px solid #6b8c42;
+            border-radius: 50%; position: absolute; bottom: 20px; left: 10%;    
+            opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1);
         }
 
         @media (max-width: 600px) {
@@ -196,12 +179,12 @@
         #dialogue-box {
             flex: 2; background-color: white; color: black; border: var(--ui-border);
             border-radius: 8px; padding: 20px; height: 100%;
-            font-size: clamp(12px, 2vw, 20px); line-height: 1.6; display: flex; align-items: center;
+            font-size: clamp(10px, 1.5vw, 18px); line-height: 1.6; display: flex; align-items: center;
         }
         .moves-container { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 100%; }
         button.move-btn {
             background-color: #f0f0f0; border: 4px solid #666; border-radius: 8px;
-            font-family: 'Press Start 2P', cursive; font-size: clamp(10px, 1.2vw, 14px);
+            font-family: 'Press Start 2P', cursive; font-size: clamp(8px, 1vw, 12px);
             cursor: pointer; text-transform: uppercase; color: #333; transition: transform 0.1s;
         }
         button.move-btn:hover:not(:disabled) { background-color: #fff; transform: translateY(-2px); }
@@ -231,34 +214,31 @@
 
     <div id="intro-screen" class="screen active">
         <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
-        <p style="color: white; font-size: 10px; margin-bottom: 50px;">PRO EDITION</p>
+        <div id="loading-container">
+            <p style="color: white; font-size: 10px;">CATCHING KANTO POKÉMON...</p>
+            <div id="loading-bar-bg">
+                <div id="loading-bar-fill"></div>
+            </div>
+            <p id="loading-text" style="color: #aaa; font-size: 8px; margin-top: 10px;">0 / 151</p>
+        </div>
         <button id="start-btn" onclick="startExperience()">PRESS START</button>
     </div>
 
     <div id="select-screen" class="screen">
-        <h2 id="select-title">Choose Your Pokémon</h2>
+        <div class="select-header">
+            <h2 id="select-title">Choose Your Pokémon</h2>
+            <input type="text" id="search-bar" placeholder="SEARCH POKEMON..." onkeyup="filterGrid()">
+        </div>
         <div class="char-grid" id="char-grid"></div>
     </div>
 
     <div id="game-container" class="screen">
         <div class="battle-scene">
-            
             <div id="enemy-hud" class="hud">
                 <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
                 <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
                 <div class="type-label" id="enemy-type">???</div>
             </div>
-
-            <div id="enemy-pos" class="sprite-container">
-                <div class="platform"></div>
-                <img src="" alt="Enemy" class="sprite-image" id="enemy-img">
-            </div>
-
-            <div id="player-pos" class="sprite-container">
-                <div class="platform"></div>
-                <img src="" alt="Player" class="sprite-image" id="player-img">
-            </div>
-
             <div id="player-hud" class="hud">
                 <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
                 <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
@@ -266,6 +246,8 @@
                 <div class="type-label" id="player-type" style="text-align: right;">???</div>
             </div>
 
+            <div id="enemy-pos" class="sprite-container"><div class="platform"></div><img src="" class="sprite-image" id="enemy-img"></div>
+            <div id="player-pos" class="sprite-container"><div class="platform"></div><img src="" class="sprite-image" id="player-img"></div>
         </div>
 
         <div class="control-panel">
@@ -279,29 +261,106 @@
 
     <div id="flash-overlay"></div>
     <button id="mute-btn" onclick="toggleMute()">🔊 Mute</button>
-
-    <audio id="bgm" loop crossorigin="anonymous">
-        <source src="https://play.pokemonshowdown.com/audio/bgm/rby-trainer.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="bgm" loop crossorigin="anonymous"><source src="https://play.pokemonshowdown.com/audio/bgm/rby-trainer.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- DATABASE ---
-        const pokemonDB = [
-            { id: 3, name: "Venusaur", types: ["Grass", "Poison"], stats: {hp:80, atk:82, def:83, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/3.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/3.png", moves: [{name: "Solar Beam", power: 120, type: "Grass", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Synthesis", power: -50, type: "heal", cat: "Status"}] },
-            { id: 6, name: "Charizard", types: ["Fire", "Flying"], stats: {hp:78, atk:84, def:78, spa:109, spd:85, spe:100}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/6.png", moves: [{name: "Flamethrower", power: 90, type: "Fire", cat: "Special"}, {name: "Air Slash", power: 75, type: "Flying", cat: "Special"}, {name: "Dragon Claw", power: 80, type: "Dragon", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
-            { id: 9, name: "Blastoise", types: ["Water"], stats: {hp:79, atk:83, def:100, spa:85, spd:105, spe:78}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/9.png", moves: [{name: "Hydro Pump", power: 110, type: "Water", cat: "Special"}, {name: "Ice Beam", power: 90, type: "Ice", cat: "Special"}, {name: "Bite", power: 60, type: "Dark", cat: "Physical"}, {name: "Iron Defense", power: -50, type: "heal", cat: "Status"}] },
-            { id: 25, name: "Pikachu", types: ["Electric"], stats: {hp:35, atk:55, def:40, spa:50, spd:50, spe:90}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png", moves: [{name: "Thunderbolt", power: 90, type: "Electric", cat: "Special"}, {name: "Quick Attack", power: 40, type: "Normal", cat: "Physical"}, {name: "Iron Tail", power: 100, type: "Steel", cat: "Physical"}, {name: "Potion", power: -50, type: "heal", cat: "Status"}] },
-            { id: 68, name: "Machamp", types: ["Fighting"], stats: {hp:90, atk:130, def:80, spa:65, spd:85, spe:55}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/68.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/68.png", moves: [{name: "Cross Chop", power: 100, type: "Fighting", cat: "Physical"}, {name: "Rock Slide", power: 75, type: "Rock", cat: "Physical"}, {name: "Strength", power: 80, type: "Normal", cat: "Physical"}, {name: "Bulk Up", power: -40, type: "heal", cat: "Status"}] },
-            { id: 94, name: "Gengar", types: ["Ghost", "Poison"], stats: {hp:60, atk:65, def:60, spa:130, spd:75, spe:110}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/94.png", moves: [{name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Sludge Bomb", power: 90, type: "Poison", cat: "Special"}, {name: "Psychic", power: 90, type: "Psychic", cat: "Special"}, {name: "Hypnosis", power: -40, type: "heal", cat: "Status"}] },
-            { id: 130, name: "Gyarados", types: ["Water", "Flying"], stats: {hp:95, atk:125, def:79, spa:60, spd:100, spe:81}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/130.png", moves: [{name: "Waterfall", power: 80, type: "Water", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Ice Fang", power: 65, type: "Ice", cat: "Physical"}, {name: "Dragon Dance", power: -30, type: "heal", cat: "Status"}] },
-            { id: 143, name: "Snorlax", types: ["Normal"], stats: {hp:160, atk:110, def:65, spa:65, spd:110, spe:30}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/143.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/143.png", moves: [{name: "Body Slam", power: 85, type: "Normal", cat: "Physical"}, {name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Crunch", power: 80, type: "Dark", cat: "Physical"}, {name: "Rest", power: -100, type: "heal", cat: "Status"}] },
-            { id: 149, name: "Dragonite", types: ["Dragon", "Flying"], stats: {hp:91, atk:134, def:95, spa:100, spd:100, spe:80}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/149.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/149.png", moves: [{name: "Outrage", power: 120, type: "Dragon", cat: "Physical"}, {name: "Wing Attack", power: 60, type: "Flying", cat: "Physical"}, {name: "Thunder Punch", power: 75, type: "Electric", cat: "Physical"}, {name: "Roost", power: -50, type: "heal", cat: "Status"}] },
-            { id: 150, name: "Mewtwo", types: ["Psychic"], stats: {hp:106, atk:110, def:90, spa:154, spd:90, spe:130}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/150.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/150.png", moves: [{name: "Psystrike", power: 100, type: "Psychic", cat: "Special"}, {name: "Shadow Ball", power: 80, type: "Ghost", cat: "Special"}, {name: "Aura Sphere", power: 80, type: "Fighting", cat: "Special"}, {name: "Recover", power: -60, type: "heal", cat: "Status"}] },
-            { id: 59, name: "Arcanine", types: ["Fire"], stats: {hp:90, atk:110, def:80, spa:100, spd:80, spe:95}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/59.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/59.png", moves: [{name: "Flare Blitz", power: 120, type: "Fire", cat: "Physical"}, {name: "Thunder Fang", power: 65, type: "Electric", cat: "Physical"}, {name: "Extreme Speed", power: 80, type: "Normal", cat: "Physical"}, {name: "Morning Sun", power: -50, type: "heal", cat: "Status"}] },
-            { id: 76, name: "Golem", types: ["Rock", "Ground"], stats: {hp:80, atk:120, def:130, spa:55, spd:65, spe:45}, front: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/76.png", back: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/76.png", moves: [{name: "Earthquake", power: 100, type: "Ground", cat: "Physical"}, {name: "Rock Throw", power: 50, type: "Rock", cat: "Physical"}, {name: "Double Edge", power: 120, type: "Normal", cat: "Physical"}, {name: "Defense Curl", power: -30, type: "heal", cat: "Status"}] }
-        ];
+        // --- 1. DATA: SUPPORTED MOVE POOL ---
+        // Instead of hardcoding 151 pokemon moves, we create a master list of generic moves.
+        // When we fetch a pokemon, we look at what moves it learns, and pick the best ones from this list.
+        const MASTER_MOVE_DEX = {
+            // FIRE
+            "flamethrower": {power: 90, type: "fire", cat: "Special"},
+            "fire-blast": {power: 110, type: "fire", cat: "Special"},
+            "ember": {power: 40, type: "fire", cat: "Special"},
+            "flare-blitz": {power: 120, type: "fire", cat: "Physical"},
+            "fire-punch": {power: 75, type: "fire", cat: "Physical"},
+            // WATER
+            "hydro-pump": {power: 110, type: "water", cat: "Special"},
+            "surf": {power: 90, type: "water", cat: "Special"},
+            "water-gun": {power: 40, type: "water", cat: "Special"},
+            "waterfall": {power: 80, type: "water", cat: "Physical"},
+            "bubble-beam": {power: 65, type: "water", cat: "Special"},
+            // GRASS
+            "solar-beam": {power: 120, type: "grass", cat: "Special"},
+            "energy-ball": {power: 90, type: "grass", cat: "Special"},
+            "razor-leaf": {power: 55, type: "grass", cat: "Physical"},
+            "vine-whip": {power: 45, type: "grass", cat: "Physical"},
+            "giga-drain": {power: 75, type: "grass", cat: "Special"},
+            // ELECTRIC
+            "thunderbolt": {power: 90, type: "electric", cat: "Special"},
+            "thunder": {power: 110, type: "electric", cat: "Special"},
+            "thunder-punch": {power: 75, type: "electric", cat: "Physical"},
+            "spark": {power: 65, type: "electric", cat: "Physical"},
+            // ICE
+            "ice-beam": {power: 90, type: "ice", cat: "Special"},
+            "blizzard": {power: 110, type: "ice", cat: "Special"},
+            "ice-punch": {power: 75, type: "ice", cat: "Physical"},
+            // FIGHTING
+            "cross-chop": {power: 100, type: "fighting", cat: "Physical"},
+            "brick-break": {power: 75, type: "fighting", cat: "Physical"},
+            "submission": {power: 80, type: "fighting", cat: "Physical"},
+            "aura-sphere": {power: 80, type: "fighting", cat: "Special"},
+            // POISON
+            "sludge-bomb": {power: 90, type: "poison", cat: "Special"},
+            "poison-jab": {power: 80, type: "poison", cat: "Physical"},
+            "acid": {power: 40, type: "poison", cat: "Special"},
+            // GROUND
+            "earthquake": {power: 100, type: "ground", cat: "Physical"},
+            "dig": {power: 80, type: "ground", cat: "Physical"},
+            "mud-shot": {power: 55, type: "ground", cat: "Special"},
+            // FLYING
+            "fly": {power: 90, type: "flying", cat: "Physical"},
+            "wing-attack": {power: 60, type: "flying", cat: "Physical"},
+            "aerial-ace": {power: 60, type: "flying", cat: "Physical"},
+            "air-slash": {power: 75, type: "flying", cat: "Special"},
+            "drill-peck": {power: 80, type: "flying", cat: "Physical"},
+            // PSYCHIC
+            "psychic": {power: 90, type: "psychic", cat: "Special"},
+            "psybeam": {power: 65, type: "psychic", cat: "Special"},
+            "confusion": {power: 50, type: "psychic", cat: "Special"},
+            "zen-headbutt": {power: 80, type: "psychic", cat: "Physical"},
+            // BUG
+            "x-scissor": {power: 80, type: "bug", cat: "Physical"},
+            "bug-buzz": {power: 90, type: "bug", cat: "Special"},
+            // ROCK
+            "rock-slide": {power: 75, type: "rock", cat: "Physical"},
+            "stone-edge": {power: 100, type: "rock", cat: "Physical"},
+            "rock-throw": {power: 50, type: "rock", cat: "Physical"},
+            // GHOST
+            "shadow-ball": {power: 80, type: "ghost", cat: "Special"},
+            "shadow-claw": {power: 70, type: "ghost", cat: "Physical"},
+            "lick": {power: 30, type: "ghost", cat: "Physical"},
+            // DRAGON
+            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"},
+            "outrage": {power: 120, type: "dragon", cat: "Physical"},
+            "dragon-pulse": {power: 85, type: "dragon", cat: "Special"},
+            // STEEL
+            "iron-tail": {power: 100, type: "steel", cat: "Physical"},
+            "flash-cannon": {power: 80, type: "steel", cat: "Special"},
+            "steel-wing": {power: 70, type: "steel", cat: "Physical"},
+            // DARK
+            "crunch": {power: 80, type: "dark", cat: "Physical"},
+            "bite": {power: 60, type: "dark", cat: "Physical"},
+            "dark-pulse": {power: 80, type: "dark", cat: "Special"},
+            // NORMAL
+            "body-slam": {power: 85, type: "normal", cat: "Physical"},
+            "hyper-beam": {power: 150, type: "normal", cat: "Special"},
+            "tri-attack": {power: 80, type: "normal", cat: "Special"},
+            "slash": {power: 70, type: "normal", cat: "Physical"},
+            "quick-attack": {power: 40, type: "normal", cat: "Physical"},
+            "tackle": {power: 40, type: "normal", cat: "Physical"},
+            "scratch": {power: 40, type: "normal", cat: "Physical"},
+            "cut": {power: 50, type: "normal", cat: "Physical"},
+            "strength": {power: 80, type: "normal", cat: "Physical"},
+            "double-edge": {power: 120, type: "normal", cat: "Physical"},
+            "swift": {power: 60, type: "normal", cat: "Special"},
+            // HEAL/STATUS (Generic)
+            "recover": {power: -50, type: "heal", cat: "Status"},
+            "roost": {power: -50, type: "heal", cat: "Status"},
+            "synthesis": {power: -50, type: "heal", cat: "Status"},
+            "rest": {power: -100, type: "heal", cat: "Status"} // Actually full heal
+        };
 
-        // --- TYPE CHART ---
         const TYPE_CHART = {
             normal:   { rock: 0.5, ghost: 0, steel: 0.5 },
             fire:     { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
@@ -322,15 +381,115 @@
             dark:     { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }
         };
 
-        // --- GAME VARIABLES ---
+        // --- GLOBAL STATE ---
+        const pokemonDB = []; // Will be populated by API
         let player = {};
         let enemy = {};
         let selectedPlayerIndex = null;
-        let selectionPhase = 'player'; // 'player' or 'enemy'
+        let selectionPhase = 'player';
         const bgm = document.getElementById('bgm');
         const dialogueBox = document.getElementById('dialogue-box');
 
-        // --- NAVIGATION ---
+        // --- 2. INITIALIZATION & API FETCH ---
+        window.onload = async () => {
+            await fetchAllKanto();
+        };
+
+        async function fetchAllKanto() {
+            const loadingBar = document.getElementById('loading-bar-fill');
+            const loadingText = document.getElementById('loading-text');
+            const startBtn = document.getElementById('start-btn');
+            const loadingContainer = document.getElementById('loading-container');
+
+            // Fetch basic list 1-151
+            const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
+            const data = await response.json();
+            const results = data.results;
+
+            // Fetch details for each
+            const promises = results.map(async (p, index) => {
+                const res = await fetch(p.url);
+                const details = await res.json();
+                
+                // Format Data for our engine
+                const formatted = {
+                    id: details.id,
+                    name: details.name,
+                    types: details.types.map(t => t.type.name),
+                    stats: {
+                        hp: details.stats[0].base_stat,
+                        atk: details.stats[1].base_stat,
+                        def: details.stats[2].base_stat,
+                        spa: details.stats[3].base_stat,
+                        spd: details.stats[4].base_stat,
+                        spe: details.stats[5].base_stat
+                    },
+                    front: details.sprites.front_default,
+                    back: details.sprites.back_default || details.sprites.front_default, // Fallback if no back sprite
+                    rawMoves: details.moves.map(m => m.move.name) // Store move names to filter later
+                };
+                
+                // Update UI every 5 pokemon loaded
+                if (index % 5 === 0) {
+                    const pct = Math.floor((index / 151) * 100);
+                    loadingBar.style.width = pct + "%";
+                    loadingText.innerText = `${index} / 151`;
+                }
+                
+                return formatted;
+            });
+
+            // Wait for all
+            const allData = await Promise.all(promises);
+            // Sort by ID because async might finish out of order
+            allData.sort((a,b) => a.id - b.id);
+            
+            // Push to DB
+            allData.forEach(p => pokemonDB.push(p));
+
+            // Done
+            loadingBar.style.width = "100%";
+            loadingText.innerText = "151 / 151 - READY!";
+            setTimeout(() => {
+                loadingContainer.style.display = 'none';
+                startBtn.style.display = 'inline-block';
+            }, 500);
+        }
+
+        // --- 3. DYNAMIC MOVE GENERATION ---
+        function generateMoveset(pokemon) {
+            let moves = [];
+            
+            // Check every move the pokemon *can* learn against our Master Dex
+            pokemon.rawMoves.forEach(mName => {
+                if (MASTER_MOVE_DEX[mName]) {
+                    const moveData = MASTER_MOVE_DEX[mName];
+                    moves.push({ name: mName.replace(/-/g, ' '), ...moveData });
+                }
+            });
+
+            // Add generic Heal if they don't have one (for gameplay balance)
+            if (!moves.some(m => m.cat === 'Status')) {
+               moves.push({ name: "recover", power: -50, type: "heal", cat: "Status" });
+            }
+
+            // Pick 4 strongest/best
+            // Sort: Prioritize Moves with Power > 0, then by Power
+            moves.sort((a, b) => b.power - a.power);
+            
+            // Slice top 4, but ensure at least 1 attacking move
+            let finalMoves = moves.slice(0, 4);
+            
+            // Failsafe: if no moves matched (unlikely), give Struggle
+            if (finalMoves.length === 0) {
+                finalMoves.push({name: "Struggle", power: 50, type: "normal", cat: "Physical"});
+            }
+
+            return finalMoves;
+        }
+
+        // --- GAME LOGIC START ---
+        
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
@@ -351,15 +510,16 @@
             selectionPhase = 'player';
             selectedPlayerIndex = null;
             document.getElementById('select-title').innerText = "Choose Your Pokémon";
+            document.getElementById('search-bar').value = "";
             renderSelectionGrid();
             switchScreen('select-screen');
         }
 
-        function renderSelectionGrid() {
+        function renderSelectionGrid(filterText = "") {
             const grid = document.getElementById('char-grid');
             grid.innerHTML = "";
 
-            // ALWAYS Add Random Button First
+            // Random Button
             const randomCard = document.createElement('div');
             randomCard.className = 'char-card random-card';
             randomCard.innerHTML = `
@@ -369,39 +529,45 @@
             randomCard.onclick = () => handleSelection(-1);
             grid.appendChild(randomCard);
 
-            // Render Standard Roster
-            pokemonDB.forEach((p, index) => {
+            // Filter Logic
+            const filtered = pokemonDB.filter(p => p.name.includes(filterText.toLowerCase()));
+
+            filtered.forEach((p) => {
+                // Find original index in master DB
+                const originalIndex = pokemonDB.indexOf(p);
+                
                 const card = document.createElement('div');
                 card.className = 'char-card';
                 card.innerHTML = `
-                    <img src="${p.front}" alt="${p.name}">
+                    <img src="${p.front}" alt="${p.name}" loading="lazy">
                     <p>${p.name}</p>
                     <div class="stat-preview">SPD: ${p.stats.spe} | ATK: ${p.stats.atk}</div>
                 `;
-                card.onclick = () => handleSelection(index);
+                card.onclick = () => handleSelection(originalIndex);
                 grid.appendChild(card);
             });
         }
 
+        function filterGrid() {
+            const text = document.getElementById('search-bar').value;
+            renderSelectionGrid(text);
+        }
+
         function handleSelection(index) {
             if (selectionPhase === 'player') {
-                // Phase 1: Player Picked
                 let pIndex = index;
                 if (pIndex === -1) {
                     pIndex = Math.floor(Math.random() * pokemonDB.length);
                 }
-                selectedPlayerIndex = pIndex; // Store resolved index
-
+                selectedPlayerIndex = pIndex;
                 selectionPhase = 'enemy';
                 document.getElementById('select-title').innerText = "Choose Opponent";
-                renderSelectionGrid(); // Re-render (Random button still there)
+                document.getElementById('search-bar').value = "";
+                renderSelectionGrid(); 
             } else {
-                // Phase 2: Enemy Picked
                 let eIndex = index;
                 if (eIndex === -1) {
                     eIndex = Math.floor(Math.random() * pokemonDB.length);
-                    // Prevent mirror match on random? (Optional)
-                    // while(eIndex === selectedPlayerIndex) { eIndex = Math.floor(Math.random() * pokemonDB.length); }
                 }
                 startGame(selectedPlayerIndex, eIndex);
             }
@@ -414,19 +580,21 @@
         }
 
         function startGame(pIndex, eIndex) {
-            // Player Setup
+            // Setup Player
             const pData = pokemonDB[pIndex];
             player = JSON.parse(JSON.stringify(pData)); 
             player.maxHp = Math.floor(pData.stats.hp + 60 + 50); 
             player.currHp = player.maxHp;
             player.isPlayer = true;
+            player.moves = generateMoveset(pData);
             
-            // Enemy Setup
+            // Setup Enemy
             const eData = pokemonDB[eIndex];
             enemy = JSON.parse(JSON.stringify(eData));
             enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50);
             enemy.currHp = enemy.maxHp;
             enemy.isPlayer = false;
+            enemy.moves = generateMoveset(eData);
 
             // Render
             document.getElementById('player-img').src = player.back;
@@ -460,15 +628,13 @@
             }, 200);
         }
 
-        // --- SPEED & TURN LOGIC ---
+        // --- BATTLE ENGINE (Stats + Categories) ---
         function handleTurn(playerMoveIndex) {
             disableButtons(true);
-            
             const playerMove = player.moves[playerMoveIndex];
             const enemyMove = enemy.moves[Math.floor(Math.random() * enemy.moves.length)];
 
             let first, second, firstMove, secondMove;
-
             if (player.stats.spe >= enemy.stats.spe) {
                 first = player; firstMove = playerMove;
                 second = enemy; secondMove = enemyMove;
@@ -507,19 +673,23 @@
                         updateHealthUI(attacker);
                         typeWriter(`${attacker.name} recovered HP!`, callback);
                     } else {
+                        // Formula
                         let A = (move.cat === "Physical") ? attacker.stats.atk : attacker.stats.spa;
                         let D = (move.cat === "Physical") ? defender.stats.def : defender.stats.spd;
                         let baseDmg = ((22 * move.power * (A / D)) / 50) + 2;
 
+                        // Type Mod
                         let multiplier = 1.0;
                         defender.types.forEach(t => {
                             const map = TYPE_CHART[move.type.toLowerCase()];
                             if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()];
                         });
 
+                        // STAB
                         let stab = 1.0;
                         if (attacker.types.includes(move.type)) stab = 1.5;
 
+                        // Random
                         let random = (Math.floor(Math.random() * 16) + 85) / 100;
                         let damage = Math.floor(baseDmg * multiplier * stab * random);
                         
@@ -569,9 +739,7 @@
             else if(pct > 20) bar.style.backgroundColor = "#ffeb3b";
             else bar.style.backgroundColor = "#f44336";
             
-            if(char.isPlayer) {
-                document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
-            }
+            if(char.isPlayer) document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
         }
 
         function typeWriter(text, cb) {
@@ -584,19 +752,11 @@
             type();
         }
 
-        function disableButtons(disabled) {
-            document.querySelectorAll('.move-btn').forEach(b => b.disabled = disabled);
-        }
-
-        function showReset() {
-            document.getElementById('moves-ui').style.display = 'none';
-            document.getElementById('reset-ui').style.display = 'grid';
-        }
-
+        function disableButtons(disabled) { document.querySelectorAll('.move-btn').forEach(b => b.disabled = disabled); }
+        function showReset() { document.getElementById('moves-ui').style.display = 'none'; document.getElementById('reset-ui').style.display = 'grid'; }
         function toggleMute() {
             const btn = document.getElementById('mute-btn');
-            if (bgm.paused) { bgm.play(); btn.textContent = "🔊 Mute"; }
-            else { bgm.pause(); btn.textContent = "🔇 Unmute"; }
+            if (bgm.paused) { bgm.play(); btn.textContent = "🔊 Mute"; } else { bgm.pause(); btn.textContent = "🔇 Unmute"; }
         }
     </script>
 </body>
