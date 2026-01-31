@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Helper Hint</title>
+    <title>Pokémon Battle: Extended Moves</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -122,6 +122,7 @@
         }
         .move-option:hover { background: #555; }
         .move-option.selected { border-color: var(--pokemon-yellow); background: #2a2a2a; }
+        .move-details { font-size: 6px; color: #aaa; margin-top: 4px; }
         .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
         .action-btn { padding: 10px 20px; font-family: 'Press Start 2P'; cursor: pointer; background: #4caf50; color: white; border: none; font-size: 10px; }
         .action-btn.cancel { background: #f44336; }
@@ -139,46 +140,24 @@
         .type-label { font-size: 8px; margin-top: 4px; opacity: 0.7; text-transform: uppercase; color: #333; display:flex; justify-content: space-between;}
         .ability-badge { color: #555; font-weight: bold; font-size: 7px; background: #ddd; padding: 2px 4px; border-radius: 4px; border: 1px solid #999; }
         
-        /* --- VISUAL FIXES HERE --- */
-        .sprite-container { 
-            position: absolute; z-index: 5; 
-            width: 300px; height: 300px; 
-            display: flex; justify-content: center; align-items: flex-end; 
-        }
-        
+        .sprite-container { position: absolute; z-index: 5; width: 300px; height: 300px; display: flex; justify-content: center; align-items: flex-end; }
         #enemy-pos { top: 25%; right: 10%; } 
         #player-pos { bottom: 15%; left: 10%; }
         
-        .sprite-image { 
-            width: auto; height: auto; 
-            image-rendering: pixelated; 
-            position: relative; z-index: 2; 
-            filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); 
-            opacity: 0; 
-            transform-origin: bottom center; 
-            margin-bottom: 30px; 
-            backface-visibility: hidden;
-            transform: translateZ(0);
-            will-change: transform, opacity;
-        }
-
+        .sprite-image { width: auto; height: auto; image-rendering: pixelated; position: relative; z-index: 2; filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); opacity: 0; transform-origin: bottom center; margin-bottom: 30px; backface-visibility: hidden; transform: translateZ(0); will-change: transform, opacity; }
         #player-img { transform: scale3d(3.8, 3.8, 1); } 
         #enemy-img { transform: scale3d(3.0, 3.0, 1); } 
 
         .platform { width: 300px; height: 100px; background-color: #e0eec0; border: 4px solid #6b8c42; border-radius: 50%; position: absolute; bottom: 0px; left: 50%; margin-left: -150px; opacity: 0.9; transform: scaleY(0.4); z-index: 1; box-shadow: 0 10px 0 rgba(0,0,0,0.1); }
         .pokeball-sprite { width: 30px; height: 30px; position: absolute; z-index: 20; display: none; background-image: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'); background-size: contain; background-repeat: no-repeat; }
-        
         #player-ball { bottom: 50px; left: -100px; }
         #enemy-ball { top: 50px; right: -100px; }
-
         .shiny-star { position: absolute; width: 40px; height: 40px; background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); z-index: 30; opacity: 0; bottom: 50px; left: 50%; transform: translateX(-50%); }
         
         @keyframes sparkle-burst { 0% { transform: translate(-50%, 0) scale(0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2.0) rotate(180deg); opacity: 0; } }
         .sparkle-anim { animation: sparkle-burst 0.8s ease-out forwards; }
-        
         @keyframes throwPlayer { 0% { left: -100px; bottom: 0px; transform: rotate(0deg); } 100% { left: 50%; bottom: 50%; transform: translate(-50%, 0) rotate(720deg); } }
         @keyframes throwEnemy { 0% { right: -100px; top: 0px; transform: rotate(0deg); } 100% { right: 50%; top: 50%; transform: translate(50%, 0) rotate(-720deg); } }
-        
         @keyframes popPlayer { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.8,3.8,1); opacity: 1; } }
         @keyframes popEnemy { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.0,3.0,1); opacity: 1; } }
 
@@ -196,6 +175,8 @@
         .reset-btn { display: none; width: 100%; background-color: #ffcc00; border-color: #bfa100; height: 100%; font-size: 20px; cursor: pointer; font-family: 'Press Start 2P'; border-width: 4px;}
         #mute-btn { position: fixed; top: 10px; right: 10px; z-index: 100; background: rgba(0,0,0,0.5); color: white; border: 2px solid white; padding: 5px 10px; cursor: pointer; font-family: sans-serif; font-size: 12px; display: none; }
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 9998; transition: opacity 0.1s; }
+        @keyframes dropIn { 0% { opacity: 0; transform: translateY(-100px) scale(0.5); } 70% { opacity: 1; transform: translateY(10px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         
         @keyframes attack-lunge { 0% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } 50% { transform: translate3d(100px, -100px, 0) scale3d(4.2,4.2,1); } 100% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } }
         @keyframes attack-lunge-enemy { 0% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } 50% { transform: translate3d(-100px, 100px, 0) scale3d(3.4,3.4,1); } 100% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } }
@@ -228,7 +209,6 @@
         .dt-title { font-weight: bold; margin-bottom: 5px; color: #333; text-transform: capitalize; }
         .dt-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #666; }
 
-        /* --- NEW: HINT BUBBLE --- */
         #sidebar-hint {
             position: fixed; bottom: 20px; right: 20px;
             background: rgba(0,0,0,0.8); color: white; border: 1px solid #777;
@@ -291,17 +271,19 @@
 
         <div id="game-container" class="screen">
             <div class="battle-scene">
-                <div id="enemy-hud" class="hud">
-                    <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
-                    <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
-                    <div class="type-label"><span id="enemy-type">???</span><span id="enemy-ability" class="ability-badge">---</span></div>
-                </div>
                 <div id="player-hud" class="hud">
                     <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
                     <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
                     <div class="info-text" style="margin-top: 5px; justify-content: flex-end;"> <span id="player-hp-text">100/100</span> </div>
                     <div class="type-label"><span id="player-type">???</span><span id="player-ability" class="ability-badge">---</span></div>
                 </div>
+
+                <div id="enemy-hud" class="hud">
+                    <div class="info-text"> <span id="enemy-name">???</span> <span>Lv50</span> </div>
+                    <div class="hp-bar-bg"> <div id="enemy-hp-bar" class="hp-bar-fill"></div> </div>
+                    <div class="type-label"><span id="enemy-type">???</span><span id="enemy-ability" class="ability-badge">---</span></div>
+                </div>
+
                 <div id="player-pos" class="sprite-container">
                     <div class="platform"></div><div id="player-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="player-img">
                 </div>
@@ -356,23 +338,24 @@
             normal: { rock: 0.5, ghost: 0, steel: 0.5 }, fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 }, water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 }, electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 }, grass: { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 }, ice: { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 }, fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 }, poison: { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0.5 }, ground: { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 }, flying: { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 }, psychic: { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 }, bug: { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 }, rock: { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 }, ghost: { psychic: 2, ghost: 2, dark: 0.5, normal: 0 }, dragon: { dragon: 2, steel: 0.5, fairy: 0 }, steel: { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 }, dark: { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }, fairy: { fighting: 2, dragon: 2, dark: 2, fire: 0.5, poison: 0.5, steel: 0.5 }
         };
 
+        // EXTENDED MOVE DEX (Signatures + Power Moves)
         const MASTER_MOVE_DEX = {
-            "flamethrower": {power: 90, type: "fire", cat: "Special"}, "fire-blast": {power: 110, type: "fire", cat: "Special"}, "ember": {power: 40, type: "fire", cat: "Special"}, "flare-blitz": {power: 120, type: "fire", cat: "Physical"}, "fire-punch": {power: 75, type: "fire", cat: "Physical"},
-            "hydro-pump": {power: 110, type: "water", cat: "Special"}, "surf": {power: 90, type: "water", cat: "Special"}, "water-gun": {power: 40, type: "water", cat: "Special"}, "waterfall": {power: 80, type: "water", cat: "Physical"}, "bubble-beam": {power: 65, type: "water", cat: "Special"},
-            "solar-beam": {power: 120, type: "grass", cat: "Special"}, "energy-ball": {power: 90, type: "grass", cat: "Special"}, "razor-leaf": {power: 55, type: "grass", cat: "Physical"}, "vine-whip": {power: 45, type: "grass", cat: "Physical"}, "giga-drain": {power: 75, type: "grass", cat: "Special"},
+            "flamethrower": {power: 90, type: "fire", cat: "Special"}, "fire-blast": {power: 110, type: "fire", cat: "Special"}, "ember": {power: 40, type: "fire", cat: "Special"}, "flare-blitz": {power: 120, type: "fire", cat: "Physical"}, "fire-punch": {power: 75, type: "fire", cat: "Physical"}, "pyro-ball": {power: 120, type: "fire", cat: "Physical"},
+            "hydro-pump": {power: 110, type: "water", cat: "Special"}, "surf": {power: 90, type: "water", cat: "Special"}, "water-gun": {power: 40, type: "water", cat: "Special"}, "waterfall": {power: 80, type: "water", cat: "Physical"}, "bubble-beam": {power: 65, type: "water", cat: "Special"}, "origin-pulse": {power: 110, type: "water", cat: "Special"},
+            "solar-beam": {power: 120, type: "grass", cat: "Special"}, "energy-ball": {power: 90, type: "grass", cat: "Special"}, "razor-leaf": {power: 55, type: "grass", cat: "Physical"}, "vine-whip": {power: 45, type: "grass", cat: "Physical"}, "giga-drain": {power: 75, type: "grass", cat: "Special"}, "wood-hammer": {power: 120, type: "grass", cat: "Physical"}, "leaf-storm": {power: 130, type: "grass", cat: "Special"},
             "thunderbolt": {power: 90, type: "electric", cat: "Special"}, "thunder": {power: 110, type: "electric", cat: "Special"}, "thunder-punch": {power: 75, type: "electric", cat: "Physical"}, "spark": {power: 65, type: "electric", cat: "Physical"},
-            "ice-beam": {power: 90, type: "ice", cat: "Special"}, "blizzard": {power: 110, type: "ice", cat: "Special"}, "ice-punch": {power: 75, type: "ice", cat: "Physical"},
-            "cross-chop": {power: 100, type: "fighting", cat: "Physical"}, "brick-break": {power: 75, type: "fighting", cat: "Physical"}, "submission": {power: 80, type: "fighting", cat: "Physical"}, "aura-sphere": {power: 80, type: "fighting", cat: "Special"},
-            "sludge-bomb": {power: 90, type: "poison", cat: "Special"}, "poison-jab": {power: 80, type: "poison", cat: "Physical"}, "acid": {power: 40, type: "poison", cat: "Special"},
-            "earthquake": {power: 100, type: "ground", cat: "Physical"}, "dig": {power: 80, type: "ground", cat: "Physical"}, "mud-shot": {power: 55, type: "ground", cat: "Special"},
-            "fly": {power: 90, type: "flying", cat: "Physical"}, "wing-attack": {power: 60, type: "flying", cat: "Physical"}, "aerial-ace": {power: 60, type: "flying", cat: "Physical"}, "air-slash": {power: 75, type: "flying", cat: "Special"}, "drill-peck": {power: 80, type: "flying", cat: "Physical"},
+            "ice-beam": {power: 90, type: "ice", cat: "Special"}, "blizzard": {power: 110, type: "ice", cat: "Special"}, "ice-punch": {power: 75, type: "ice", cat: "Physical"}, "glacial-lance": {power: 130, type: "ice", cat: "Physical"},
+            "cross-chop": {power: 100, type: "fighting", cat: "Physical"}, "brick-break": {power: 75, type: "fighting", cat: "Physical"}, "submission": {power: 80, type: "fighting", cat: "Physical"}, "aura-sphere": {power: 80, type: "fighting", cat: "Special"}, "close-combat": {power: 120, type: "fighting", cat: "Physical"}, "sacred-sword": {power: 90, type: "fighting", cat: "Physical"},
+            "sludge-bomb": {power: 90, type: "poison", cat: "Special"}, "poison-jab": {power: 80, type: "poison", cat: "Physical"}, "acid": {power: 40, type: "poison", cat: "Special"}, "gunk-shot": {power: 120, type: "poison", cat: "Physical"},
+            "earthquake": {power: 100, type: "ground", cat: "Physical"}, "dig": {power: 80, type: "ground", cat: "Physical"}, "mud-shot": {power: 55, type: "ground", cat: "Special"}, "precipice-blades": {power: 120, type: "ground", cat: "Physical"},
+            "fly": {power: 90, type: "flying", cat: "Physical"}, "wing-attack": {power: 60, type: "flying", cat: "Physical"}, "aerial-ace": {power: 60, type: "flying", cat: "Physical"}, "air-slash": {power: 75, type: "flying", cat: "Special"}, "drill-peck": {power: 80, type: "flying", cat: "Physical"}, "brave-bird": {power: 120, type: "flying", cat: "Physical"}, "dragon-ascent": {power: 120, type: "flying", cat: "Physical"},
             "psychic": {power: 90, type: "psychic", cat: "Special"}, "psybeam": {power: 65, type: "psychic", cat: "Special"}, "confusion": {power: 50, type: "psychic", cat: "Special"}, "zen-headbutt": {power: 80, type: "psychic", cat: "Physical"},
             "x-scissor": {power: 80, type: "bug", cat: "Physical"}, "bug-buzz": {power: 90, type: "bug", cat: "Special"},
             "rock-slide": {power: 75, type: "rock", cat: "Physical"}, "stone-edge": {power: 100, type: "rock", cat: "Physical"}, "rock-throw": {power: 50, type: "rock", cat: "Physical"},
-            "shadow-ball": {power: 80, type: "ghost", cat: "Special"}, "shadow-claw": {power: 70, type: "ghost", cat: "Physical"}, "lick": {power: 30, type: "ghost", cat: "Physical"},
-            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"}, "outrage": {power: 120, type: "dragon", cat: "Physical"}, "dragon-pulse": {power: 85, type: "dragon", cat: "Special"},
-            "iron-tail": {power: 100, type: "steel", cat: "Physical"}, "flash-cannon": {power: 80, type: "steel", cat: "Special"}, "steel-wing": {power: 70, type: "steel", cat: "Physical"},
-            "crunch": {power: 80, type: "dark", cat: "Physical"}, "bite": {power: 60, type: "dark", cat: "Physical"}, "dark-pulse": {power: 80, type: "dark", cat: "Special"},
+            "shadow-ball": {power: 80, type: "ghost", cat: "Special"}, "shadow-claw": {power: 70, type: "ghost", cat: "Physical"}, "lick": {power: 30, type: "ghost", cat: "Physical"}, "astral-barrage": {power: 120, type: "ghost", cat: "Special"},
+            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"}, "outrage": {power: 120, type: "dragon", cat: "Physical"}, "dragon-pulse": {power: 85, type: "dragon", cat: "Special"}, "draco-meteor": {power: 130, type: "dragon", cat: "Special"},
+            "iron-tail": {power: 100, type: "steel", cat: "Physical"}, "flash-cannon": {power: 80, type: "steel", cat: "Special"}, "steel-wing": {power: 70, type: "steel", cat: "Physical"}, "behemoth-blade": {power: 100, type: "steel", cat: "Physical"}, "behemoth-bash": {power: 100, type: "steel", cat: "Physical"}, "gigaton-hammer": {power: 160, type: "steel", cat: "Physical"},
+            "crunch": {power: 80, type: "dark", cat: "Physical"}, "bite": {power: 60, type: "dark", cat: "Physical"}, "dark-pulse": {power: 80, type: "dark", cat: "Special"}, "wicked-blow": {power: 80, type: "dark", cat: "Physical"},
             "body-slam": {power: 85, type: "normal", cat: "Physical"}, "hyper-beam": {power: 150, type: "normal", cat: "Special"}, "tri-attack": {power: 80, type: "normal", cat: "Special"}, "slash": {power: 70, type: "normal", cat: "Physical"}, "quick-attack": {power: 40, type: "normal", cat: "Physical"}, "tackle": {power: 40, type: "normal", cat: "Physical"}, "scratch": {power: 40, type: "normal", cat: "Physical"}, "cut": {power: 50, type: "normal", cat: "Physical"}, "strength": {power: 80, type: "normal", cat: "Physical"}, "double-edge": {power: 120, type: "normal", cat: "Physical"}, "swift": {power: 60, type: "normal", cat: "Special"},
             "moonblast": {power: 95, type: "fairy", cat: "Special"}, "play-rough": {power: 90, type: "fairy", cat: "Physical"}, "dazzling-gleam": {power: 80, type: "fairy", cat: "Special"},
             "recover": {power: -50, type: "heal", cat: "Status"}, "roost": {power: -50, type: "heal", cat: "Status"}, "synthesis": {power: -50, type: "heal", cat: "Status"}, "rest": {power: -100, type: "heal", cat: "Status"} 
@@ -874,7 +857,7 @@
 
         // --- SIDEBAR UI LOGIC ---
         document.addEventListener('keydown', (e) => { 
-            if (e.code === 'ShiftRight') { // Use 'code' for exact key
+            if (e.code === 'ShiftRight') { 
                 toggleChat(); 
             }
         });
