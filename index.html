@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Battle: Extended Moves</title>
+    <title>Pokémon Battle: Stat Auras</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -127,6 +127,7 @@
         .action-btn { padding: 10px 20px; font-family: 'Press Start 2P'; cursor: pointer; background: #4caf50; color: white; border: none; font-size: 10px; }
         .action-btn.cancel { background: #f44336; }
         .action-btn:disabled { background: #555; cursor: not-allowed; }
+        #move-loading-msg { color: #ffeb3b; font-size: 10px; text-align: center; display: none; margin-bottom: 10px; animation: blink 1s infinite;}
 
         /* BATTLE */
         #game-container { z-index: 10; width: 100%; height: 100%; justify-content: flex-start; }
@@ -154,13 +155,53 @@
         #enemy-ball { top: 50px; right: -100px; }
         .shiny-star { position: absolute; width: 40px; height: 40px; background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); z-index: 30; opacity: 0; bottom: 50px; left: 50%; transform: translateX(-50%); }
         
+        /* VFX */
+        .vfx-container { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        .slash-anim { position: absolute; width: 150px; height: 150px; background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.9) 45%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.9) 55%, transparent 60%); opacity: 0; transform: scale(0); }
+        .beam-anim { position: absolute; width: 50px; height: 50px; background: radial-gradient(circle, #00d2ff 20%, rgba(0,210,255,0) 70%); border-radius: 50%; box-shadow: 0 0 20px #00d2ff; }
+        .hit-red { animation: hit-flash 0.3s ease-out; }
+        
+        /* --- NEW: STAT AURA ANIMATIONS --- */
+        .stat-up-anim {
+            position: absolute;
+            width: 100px; height: 150px;
+            background: linear-gradient(to top, rgba(255, 60, 60, 0.7), transparent);
+            opacity: 0;
+            transform-origin: bottom center;
+            animation: stat-rise 0.8s ease-out forwards;
+            border-radius: 20px;
+        }
+        .stat-down-anim {
+            position: absolute;
+            width: 100px; height: 150px;
+            background: linear-gradient(to bottom, rgba(60, 60, 255, 0.7), transparent);
+            opacity: 0;
+            transform-origin: top center;
+            animation: stat-fall 0.8s ease-out forwards;
+            border-radius: 20px;
+        }
+
+        @keyframes stat-rise {
+            0% { transform: translateY(20px) scaleX(0.8); opacity: 0; }
+            30% { opacity: 0.8; }
+            100% { transform: translateY(-80px) scaleX(1.2); opacity: 0; }
+        }
+        @keyframes stat-fall {
+            0% { transform: translateY(-80px) scaleX(0.8); opacity: 0; }
+            30% { opacity: 0.8; }
+            100% { transform: translateY(20px) scaleX(1.2); opacity: 0; }
+        }
+
+        @keyframes slash-motion { 0% { transform: scale(0.5) rotate(-45deg); opacity: 0; } 30% { transform: scale(1.2) rotate(-45deg); opacity: 1; } 100% { transform: scale(1.5) rotate(-45deg); opacity: 0; } }
+        @keyframes beam-p-to-e { 0% { bottom: 15%; left: 15%; transform: scale(0.5); opacity: 1; } 100% { bottom: 60%; left: 80%; transform: scale(3); opacity: 0; } }
+        @keyframes beam-e-to-p { 0% { top: 30%; right: 15%; transform: scale(0.5); opacity: 1; } 100% { top: 70%; right: 80%; transform: scale(3); opacity: 0; } }
+        @keyframes hit-flash { 0%, 100% { filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.4)); } 50% { filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 10px red); } }
         @keyframes sparkle-burst { 0% { transform: translate(-50%, 0) scale(0) rotate(0deg); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2.0) rotate(180deg); opacity: 0; } }
         .sparkle-anim { animation: sparkle-burst 0.8s ease-out forwards; }
         @keyframes throwPlayer { 0% { left: -100px; bottom: 0px; transform: rotate(0deg); } 100% { left: 50%; bottom: 50%; transform: translate(-50%, 0) rotate(720deg); } }
         @keyframes throwEnemy { 0% { right: -100px; top: 0px; transform: rotate(0deg); } 100% { right: 50%; top: 50%; transform: translate(50%, 0) rotate(-720deg); } }
         @keyframes popPlayer { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.8,3.8,1); opacity: 1; } }
         @keyframes popEnemy { 0% { transform: scale3d(0,0,1); opacity: 0; } 100% { transform: scale3d(3.0,3.0,1); opacity: 1; } }
-
         .throw-p { animation: throwPlayer 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         .throw-e { animation: throwEnemy 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         .pop-p { animation: popPlayer 0.5s ease-out forwards; }
@@ -177,22 +218,13 @@
         #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 9998; transition: opacity 0.1s; }
         @keyframes dropIn { 0% { opacity: 0; transform: translateY(-100px) scale(0.5); } 70% { opacity: 1; transform: translateY(10px) scale(1.1); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        
         @keyframes attack-lunge { 0% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } 50% { transform: translate3d(100px, -100px, 0) scale3d(4.2,4.2,1); } 100% { transform: translate3d(0,0,0) scale3d(3.8,3.8,1); } }
         @keyframes attack-lunge-enemy { 0% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } 50% { transform: translate3d(-100px, 100px, 0) scale3d(3.4,3.4,1); } 100% { transform: translate3d(0,0,0) scale3d(3.0,3.0,1); } }
-        
-        @keyframes shake { 0%, 100% { transform: translate3d(0,0,0); filter: none;} 20% { transform: translate3d(-15px,0,0); filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); } 40% { transform: translate3d(15px,0,0); } 60% { transform: translate3d(-15px,0,0); } 80% { transform: translate3d(15px,0,0); } }
+        @keyframes shake { 0%, 100% { transform: translate3d(0,0,0); filter: none;} 20% { transform: translate3d(-15px,0,0); } 40% { transform: translate3d(15px,0,0); } 60% { transform: translate3d(-15px,0,0); } 80% { transform: translate3d(15px,0,0); } }
         .shake { animation: shake 0.5s; }
         .lunge { animation: attack-lunge 0.3s; }
         .lunge-enemy { animation: attack-lunge-enemy 0.3s; }
-
-        /* --- ASSISTANT SIDEBAR --- */
-        #chat-sidebar {
-            width: 0; background: #fff; height: 100%;
-            transition: width 0.3s ease; display: flex; flex-direction: column;
-            border-left: 2px solid #ddd; overflow: hidden;
-            font-family: 'Roboto', sans-serif;
-        }
+        #chat-sidebar { width: 0; background: #fff; height: 100%; transition: width 0.3s ease; display: flex; flex-direction: column; border-left: 2px solid #ddd; overflow: hidden; font-family: 'Roboto', sans-serif; }
         #chat-sidebar.open { width: 350px; }
         .chat-header { padding: 15px; border-bottom: 1px solid #eee; background: white; font-weight: 500; font-size: 16px; color: #3b4cca; display: flex; align-items: center; justify-content: space-between; }
         .chat-body { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 15px; }
@@ -208,15 +240,7 @@
         .dt-card { background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .dt-title { font-weight: bold; margin-bottom: 5px; color: #333; text-transform: capitalize; }
         .dt-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #666; }
-
-        #sidebar-hint {
-            position: fixed; bottom: 20px; right: 20px;
-            background: rgba(0,0,0,0.8); color: white; border: 1px solid #777;
-            padding: 10px 15px; border-radius: 20px;
-            font-size: 10px; font-family: 'Roboto', sans-serif;
-            pointer-events: none; z-index: 100;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
+        #sidebar-hint { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; border: 1px solid #777; padding: 10px 15px; border-radius: 20px; font-size: 10px; font-family: 'Roboto', sans-serif; pointer-events: none; z-index: 100; transition: opacity 0.3s ease, transform 0.3s ease; }
         #sidebar-hint strong { color: #ffeb3b; }
         #sidebar-hint.hidden { opacity: 0; transform: translateY(10px); }
 
@@ -225,52 +249,23 @@
 <body>
 
     <div id="app-container">
-        
         <div id="intro-screen" class="screen active">
             <h1 class="title-text">POKÉMON<br>BATTLE<br>SIMULATOR</h1>
-            <div id="loading-container">
-                <p style="color: white; font-size: 10px;">CATCHING ALL POKÉMON...</p>
-                <div id="loading-bar-bg">
-                    <div id="loading-bar-fill"></div>
-                </div>
-                <p id="loading-text" style="color: #aaa; font-size: 8px; margin-top: 10px;">0 / 1000+</p>
-            </div>
+            <div id="loading-container"><p style="color: white; font-size: 10px;">CATCHING ALL POKÉMON...</p><div id="loading-bar-bg"><div id="loading-bar-fill"></div></div><p id="loading-text" style="color: #aaa; font-size: 8px; margin-top: 10px;">0 / 1000+</p></div>
             <button id="start-btn" onclick="startExperience()">PRESS START</button>
         </div>
 
         <div id="select-screen" class="screen">
-            <div class="select-header">
-                <h2 id="select-title">Choose Your Pokémon</h2>
-                <div class="search-container">
-                    <input type="text" id="search-bar" placeholder="SEARCH POKEMON..." onkeyup="filterGrid()">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="shiny-mode" onchange="toggleShinyMode()">
-                        <div class="toggle-box"></div> SHINY
-                    </label>
-                    <label class="toggle-label">
-                        <input type="checkbox" id="move-mode" onchange="toggleMoveMode()">
-                        <div class="toggle-box"></div> PICK MOVES
-                    </label>
-                </div>
-            </div>
-            <div class="char-grid" id="char-grid"></div>
-            <div id="data-loading">Reading Pokedex Data...</div>
+            <div class="select-header"><h2 id="select-title">Choose Your Pokémon</h2><div class="search-container"><input type="text" id="search-bar" placeholder="SEARCH POKEMON..." onkeyup="filterGrid()"><label class="toggle-label"><input type="checkbox" id="shiny-mode" onchange="toggleShinyMode()"><div class="toggle-box"></div> SHINY</label><label class="toggle-label"><input type="checkbox" id="move-mode" onchange="toggleMoveMode()"><div class="toggle-box"></div> PICK MOVES</label></div></div>
+            <div class="char-grid" id="char-grid"></div><div id="data-loading">Reading Pokedex Data...</div>
         </div>
 
-        <div id="move-modal">
-            <div class="modal-content">
-                <h2 id="modal-pokemon-name" style="color:white; margin:0;">Moves</h2>
-                <p style="color:#aaa; font-size:10px; text-align:center;">Select 4 moves</p>
-                <div class="move-grid" id="modal-move-grid"></div>
-                <div class="modal-buttons">
-                    <button class="action-btn cancel" onclick="closeMoveSelector()">Back</button>
-                    <button class="action-btn" id="confirm-moves-btn" onclick="confirmMoves()" disabled>Confirm (0/4)</button>
-                </div>
-            </div>
-        </div>
+        <div id="move-modal"><div class="modal-content"><h2 id="modal-pokemon-name" style="color:white; margin:0;">Moves</h2><p style="color:#aaa; font-size:10px; text-align:center;">Select 4 moves</p><div class="move-grid" id="modal-move-grid"></div><div class="modal-buttons"><button class="action-btn cancel" onclick="closeMoveSelector()">Back</button><button class="action-btn" id="confirm-moves-btn" onclick="confirmMoves()" disabled>Confirm (0/4)</button></div></div></div>
 
         <div id="game-container" class="screen">
             <div class="battle-scene">
+                <div class="vfx-container" id="vfx-layer"></div>
+
                 <div id="player-hud" class="hud">
                     <div class="info-text"> <span id="player-name">???</span> <span>Lv50</span> </div>
                     <div class="hp-bar-bg"> <div id="player-hp-bar" class="hp-bar-fill"></div> </div>
@@ -284,12 +279,8 @@
                     <div class="type-label"><span id="enemy-type">???</span><span id="enemy-ability" class="ability-badge">---</span></div>
                 </div>
 
-                <div id="player-pos" class="sprite-container">
-                    <div class="platform"></div><div id="player-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="player-img">
-                </div>
-                <div id="enemy-pos" class="sprite-container">
-                    <div class="platform"></div><div id="enemy-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="enemy-img">
-                </div>
+                <div id="player-pos" class="sprite-container"><div class="platform"></div><div id="player-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="player-img"></div>
+                <div id="enemy-pos" class="sprite-container"><div class="platform"></div><div id="enemy-ball" class="pokeball-sprite"></div><img src="" class="sprite-image" id="enemy-img"></div>
             </div>
             <div class="control-panel">
                 <div id="dialogue-box">Choose a Pokémon to begin!</div>
@@ -306,27 +297,9 @@
     </div>
 
     <div id="chat-sidebar">
-        <div class="chat-header">
-            <span>PokéAssistant</span>
-            <span style="font-size: 10px; color: #aaa;">Press 'Right Shift' to close</span>
-        </div>
-        <div class="chat-body" id="chat-history">
-            <div class="chat-msg bot">
-                Assistant Ready.<br>
-                Try <b>/dt lugia</b> or <b>/weak garchomp</b>.
-            </div>
-            <div class="pill-container">
-                <div class="pill" onclick="fillChat('/dt ')">/dt</div>
-                <div class="pill" onclick="fillChat('/weak ')">/weak</div>
-                <div class="pill" onclick="fillChat('/learn ')">/learn</div>
-                <div class="pill" onclick="fillChat('/calc')">/calc</div>
-            </div>
-        </div>
-        <div class="chat-input-area">
-            <div class="chat-input-wrapper">
-                <input type="text" id="chat-input" placeholder="Type command...">
-            </div>
-        </div>
+        <div class="chat-header"><span>PokéAssistant</span><span style="font-size: 10px; color: #aaa;">Press 'Right Shift' to close</span></div>
+        <div class="chat-body" id="chat-history"><div class="chat-msg bot">Assistant Ready.<br>Try <b>/dt lugia</b> or <b>/weak garchomp</b>.</div><div class="pill-container"><div class="pill" onclick="fillChat('/dt ')">/dt</div><div class="pill" onclick="fillChat('/weak ')">/weak</div><div class="pill" onclick="fillChat('/learn ')">/learn</div><div class="pill" onclick="fillChat('/calc')">/calc</div></div></div>
+        <div class="chat-input-area"><div class="chat-input-wrapper"><input type="text" id="chat-input" placeholder="Type command..."></div></div>
     </div>
 
     <audio id="welcome-bgm" loop> <source src="music/welcome.mp3" type="audio/mpeg"> </audio>
@@ -334,232 +307,140 @@
     <audio id="victory-bgm"> <source src="music/victory.mp3" type="audio/mpeg"> <source src="https://play.pokemonshowdown.com/audio/bgm/rby-victory-trainer.mp3" type="audio/mpeg"> </audio>
 
     <script>
-        const TYPE_CHART = {
-            normal: { rock: 0.5, ghost: 0, steel: 0.5 }, fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 }, water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 }, electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 }, grass: { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 }, ice: { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 }, fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 }, poison: { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0.5 }, ground: { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 }, flying: { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 }, psychic: { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 }, bug: { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 }, rock: { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 }, ghost: { psychic: 2, ghost: 2, dark: 0.5, normal: 0 }, dragon: { dragon: 2, steel: 0.5, fairy: 0 }, steel: { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 }, dark: { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }, fairy: { fighting: 2, dragon: 2, dark: 2, fire: 0.5, poison: 0.5, steel: 0.5 }
+        const TYPE_CHART = { normal: { rock: 0.5, ghost: 0, steel: 0.5 }, fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 }, water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 }, electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 }, grass: { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 }, ice: { fire: 0.5, water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 }, fighting: { normal: 2, ice: 2, rock: 2, dark: 2, steel: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, ghost: 0, fairy: 0.5 }, poison: { grass: 2, fairy: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0.5 }, ground: { fire: 2, electric: 2, poison: 2, rock: 2, steel: 2, grass: 0.5, bug: 0.5, flying: 0 }, flying: { grass: 2, fighting: 2, bug: 2, electric: 0.5, rock: 0.5, steel: 0.5 }, psychic: { fighting: 2, poison: 2, psychic: 0.5, steel: 0.5, dark: 0 }, bug: { grass: 2, psychic: 2, dark: 2, fire: 0.5, fighting: 0.5, poison: 0.5, flying: 0.5, ghost: 0.5, steel: 0.5, fairy: 0.5 }, rock: { fire: 2, ice: 2, flying: 2, bug: 2, fighting: 0.5, ground: 0.5, steel: 0.5 }, ghost: { psychic: 2, ghost: 2, dark: 0.5, normal: 0 }, dragon: { dragon: 2, steel: 0.5, fairy: 0 }, steel: { ice: 2, rock: 2, fairy: 2, fire: 0.5, water: 0.5, electric: 0.5, steel: 0.5 }, dark: { psychic: 2, ghost: 2, fighting: 0.5, dark: 0.5, fairy: 0.5 }, fairy: { fighting: 2, dragon: 2, dark: 2, fire: 0.5, poison: 0.5, steel: 0.5 } };
+        
+        // --- EXTENDED STATUS MOVE LOGIC ---
+        const MOVE_LOGIC = {
+            "swords-dance": { target: 'self', boost: { atk: 2 }, msg: "Attack rose sharply!" },
+            "growl": { target: 'enemy', boost: { atk: -1 }, msg: "Attack fell!" },
+            "tail-whip": { target: 'enemy', boost: { def: -1 }, msg: "Defense fell!" },
+            "screech": { target: 'enemy', boost: { def: -2 }, msg: "Defense fell harshly!" },
+            "agility": { target: 'self', boost: { spe: 2 }, msg: "Speed rose sharply!" },
+            "iron-defense": { target: 'self', boost: { def: 2 }, msg: "Defense rose sharply!" },
+            "nasty-plot": { target: 'self', boost: { spa: 2 }, msg: "Sp. Atk rose sharply!" },
+            "calm-mind": { target: 'self', boost: { spa: 1, spd: 1 }, msg: "Sp. Atk and Sp. Def rose!" },
+            "bulk-up": { target: 'self', boost: { atk: 1, def: 1 }, msg: "Attack and Defense rose!" },
+            "dragon-dance": { target: 'self', boost: { atk: 1, spe: 1 }, msg: "Attack and Speed rose!" },
+            "growth": { target: 'self', boost: { atk: 1, spa: 1 }, msg: "grew larger!" },
+            "meditate": { target: 'self', boost: { atk: 1 }, msg: "meditated!" },
+            "harden": { target: 'self', boost: { def: 1 }, msg: "hardened!" },
+            "withdraw": { target: 'self', boost: { def: 1 }, msg: "withdrew!" },
+            "defense-curl": { target: 'self', boost: { def: 1 }, msg: "curled up!" },
+            "minimize": { target: 'self', boost: { evasion: 2 }, msg: "minimized!" },
+            "smokescreen": { target: 'enemy', boost: { accuracy: -1 }, msg: "accuracy fell!" },
+            "sand-attack": { target: 'enemy', boost: { accuracy: -1 }, msg: "accuracy fell!" },
+            "flash": { target: 'enemy', boost: { accuracy: -1 }, msg: "accuracy fell!" },
+            "kinesis": { target: 'enemy', boost: { accuracy: -1 }, msg: "accuracy fell!" },
+            "sharpen": { target: 'self', boost: { atk: 1 }, msg: "sharpened!" },
+            "amnesia": { target: 'self', boost: { spd: 2 }, msg: "Sp. Def rose sharply!" },
+            "recover": { heal: 0.5, msg: "Regained health!" },
+            "roost": { heal: 0.5, msg: "Roosted and healed!" },
+            "synthesis": { heal: 0.5, msg: "Regained health!" },
+            "soft-boiled": { heal: 0.5, msg: "Regained health!" },
+            "morning-sun": { heal: 0.5, msg: "Regained health!" },
+            "moonlight": { heal: 0.5, msg: "Regained health!" },
+            "milk-drink": { heal: 0.5, msg: "Regained health!" },
+            "slack-off": { heal: 0.5, msg: "Regained health!" },
+            "fly": { twoTurn: true, state: "flying", msg1: "flew up high!", msg2: "used Fly!" },
+            "dig": { twoTurn: true, state: "digging", msg1: "burrowed underground!", msg2: "used Dig!" },
+            "solar-beam": { twoTurn: true, state: "charging", msg1: "absorbed light!", msg2: "used Solar Beam!" },
+            "phantom-force": { twoTurn: true, state: "vanishing", msg1: "vanished instantly!", msg2: "used Phantom Force!" },
+            "hyper-beam": { recharge: true },
+            "giga-impact": { recharge: true },
+            "sleep-powder": { status: "sleep", chance: 0.75, msg: "fell asleep!" },
+            "stun-spore": { status: "paralysis", chance: 0.75, msg: "is paralyzed!" },
+            "poison-powder": { status: "poison", chance: 0.75, msg: "was poisoned!" },
+            "thunder-wave": { status: "paralysis", chance: 0.9, msg: "is paralyzed!" },
+            "glare": { status: "paralysis", chance: 1.0, msg: "is paralyzed!" },
+            "supersonic": { status: "confusion", chance: 0.55, msg: "became confused!" },
+            "confuse-ray": { status: "confusion", chance: 1.0, msg: "became confused!" },
+            "will-o-wisp": { status: "burn", chance: 0.85, msg: "was burned!" },
+            "toxic": { status: "poison", chance: 0.9, msg: "was badly poisoned!" },
+            "hypnosis": { status: "sleep", chance: 0.6, msg: "fell asleep!" },
+            "sing": { status: "sleep", chance: 0.55, msg: "fell asleep!" },
+            "spore": { status: "sleep", chance: 1.0, msg: "fell asleep!" }
         };
 
-        // EXTENDED MOVE DEX (Signatures + Power Moves)
-        const MASTER_MOVE_DEX = {
-            "flamethrower": {power: 90, type: "fire", cat: "Special"}, "fire-blast": {power: 110, type: "fire", cat: "Special"}, "ember": {power: 40, type: "fire", cat: "Special"}, "flare-blitz": {power: 120, type: "fire", cat: "Physical"}, "fire-punch": {power: 75, type: "fire", cat: "Physical"}, "pyro-ball": {power: 120, type: "fire", cat: "Physical"},
-            "hydro-pump": {power: 110, type: "water", cat: "Special"}, "surf": {power: 90, type: "water", cat: "Special"}, "water-gun": {power: 40, type: "water", cat: "Special"}, "waterfall": {power: 80, type: "water", cat: "Physical"}, "bubble-beam": {power: 65, type: "water", cat: "Special"}, "origin-pulse": {power: 110, type: "water", cat: "Special"},
-            "solar-beam": {power: 120, type: "grass", cat: "Special"}, "energy-ball": {power: 90, type: "grass", cat: "Special"}, "razor-leaf": {power: 55, type: "grass", cat: "Physical"}, "vine-whip": {power: 45, type: "grass", cat: "Physical"}, "giga-drain": {power: 75, type: "grass", cat: "Special"}, "wood-hammer": {power: 120, type: "grass", cat: "Physical"}, "leaf-storm": {power: 130, type: "grass", cat: "Special"},
-            "thunderbolt": {power: 90, type: "electric", cat: "Special"}, "thunder": {power: 110, type: "electric", cat: "Special"}, "thunder-punch": {power: 75, type: "electric", cat: "Physical"}, "spark": {power: 65, type: "electric", cat: "Physical"},
-            "ice-beam": {power: 90, type: "ice", cat: "Special"}, "blizzard": {power: 110, type: "ice", cat: "Special"}, "ice-punch": {power: 75, type: "ice", cat: "Physical"}, "glacial-lance": {power: 130, type: "ice", cat: "Physical"},
-            "cross-chop": {power: 100, type: "fighting", cat: "Physical"}, "brick-break": {power: 75, type: "fighting", cat: "Physical"}, "submission": {power: 80, type: "fighting", cat: "Physical"}, "aura-sphere": {power: 80, type: "fighting", cat: "Special"}, "close-combat": {power: 120, type: "fighting", cat: "Physical"}, "sacred-sword": {power: 90, type: "fighting", cat: "Physical"},
-            "sludge-bomb": {power: 90, type: "poison", cat: "Special"}, "poison-jab": {power: 80, type: "poison", cat: "Physical"}, "acid": {power: 40, type: "poison", cat: "Special"}, "gunk-shot": {power: 120, type: "poison", cat: "Physical"},
-            "earthquake": {power: 100, type: "ground", cat: "Physical"}, "dig": {power: 80, type: "ground", cat: "Physical"}, "mud-shot": {power: 55, type: "ground", cat: "Special"}, "precipice-blades": {power: 120, type: "ground", cat: "Physical"},
-            "fly": {power: 90, type: "flying", cat: "Physical"}, "wing-attack": {power: 60, type: "flying", cat: "Physical"}, "aerial-ace": {power: 60, type: "flying", cat: "Physical"}, "air-slash": {power: 75, type: "flying", cat: "Special"}, "drill-peck": {power: 80, type: "flying", cat: "Physical"}, "brave-bird": {power: 120, type: "flying", cat: "Physical"}, "dragon-ascent": {power: 120, type: "flying", cat: "Physical"},
-            "psychic": {power: 90, type: "psychic", cat: "Special"}, "psybeam": {power: 65, type: "psychic", cat: "Special"}, "confusion": {power: 50, type: "psychic", cat: "Special"}, "zen-headbutt": {power: 80, type: "psychic", cat: "Physical"},
-            "x-scissor": {power: 80, type: "bug", cat: "Physical"}, "bug-buzz": {power: 90, type: "bug", cat: "Special"},
-            "rock-slide": {power: 75, type: "rock", cat: "Physical"}, "stone-edge": {power: 100, type: "rock", cat: "Physical"}, "rock-throw": {power: 50, type: "rock", cat: "Physical"},
-            "shadow-ball": {power: 80, type: "ghost", cat: "Special"}, "shadow-claw": {power: 70, type: "ghost", cat: "Physical"}, "lick": {power: 30, type: "ghost", cat: "Physical"}, "astral-barrage": {power: 120, type: "ghost", cat: "Special"},
-            "dragon-claw": {power: 80, type: "dragon", cat: "Physical"}, "outrage": {power: 120, type: "dragon", cat: "Physical"}, "dragon-pulse": {power: 85, type: "dragon", cat: "Special"}, "draco-meteor": {power: 130, type: "dragon", cat: "Special"},
-            "iron-tail": {power: 100, type: "steel", cat: "Physical"}, "flash-cannon": {power: 80, type: "steel", cat: "Special"}, "steel-wing": {power: 70, type: "steel", cat: "Physical"}, "behemoth-blade": {power: 100, type: "steel", cat: "Physical"}, "behemoth-bash": {power: 100, type: "steel", cat: "Physical"}, "gigaton-hammer": {power: 160, type: "steel", cat: "Physical"},
-            "crunch": {power: 80, type: "dark", cat: "Physical"}, "bite": {power: 60, type: "dark", cat: "Physical"}, "dark-pulse": {power: 80, type: "dark", cat: "Special"}, "wicked-blow": {power: 80, type: "dark", cat: "Physical"},
-            "body-slam": {power: 85, type: "normal", cat: "Physical"}, "hyper-beam": {power: 150, type: "normal", cat: "Special"}, "tri-attack": {power: 80, type: "normal", cat: "Special"}, "slash": {power: 70, type: "normal", cat: "Physical"}, "quick-attack": {power: 40, type: "normal", cat: "Physical"}, "tackle": {power: 40, type: "normal", cat: "Physical"}, "scratch": {power: 40, type: "normal", cat: "Physical"}, "cut": {power: 50, type: "normal", cat: "Physical"}, "strength": {power: 80, type: "normal", cat: "Physical"}, "double-edge": {power: 120, type: "normal", cat: "Physical"}, "swift": {power: 60, type: "normal", cat: "Special"},
-            "moonblast": {power: 95, type: "fairy", cat: "Special"}, "play-rough": {power: 90, type: "fairy", cat: "Physical"}, "dazzling-gleam": {power: 80, type: "fairy", cat: "Special"},
-            "recover": {power: -50, type: "heal", cat: "Status"}, "roost": {power: -50, type: "heal", cat: "Status"}, "synthesis": {power: -50, type: "heal", cat: "Status"}, "rest": {power: -100, type: "heal", cat: "Status"} 
+        const MOVES_DB = {
+            "pound":[40,"normal","Physical"],"karate-chop":[50,"fighting","Physical"],"double-slap":[15,"normal","Physical"],"comet-punch":[18,"normal","Physical"],"mega-punch":[80,"normal","Physical"],"pay-day":[40,"normal","Physical"],"fire-punch":[75,"fire","Physical"],"ice-punch":[75,"ice","Physical"],"thunder-punch":[75,"electric","Physical"],"scratch":[40,"normal","Physical"],"vice-grip":[55,"normal","Physical"],"guillotine":[0,"normal","Physical"],"razor-wind":[80,"normal","Special"],"swords-dance":[0,"normal","Status"],"cut":[50,"normal","Physical"],"gust":[40,"flying","Special"],"wing-attack":[60,"flying","Physical"],"whirlwind":[0,"normal","Status"],"fly":[90,"flying","Physical"],"bind":[15,"normal","Physical"],"slam":[80,"normal","Physical"],"vine-whip":[45,"grass","Physical"],"stomp":[65,"normal","Physical"],"double-kick":[30,"fighting","Physical"],"mega-kick":[120,"normal","Physical"],"jump-kick":[100,"fighting","Physical"],"rolling-kick":[60,"fighting","Physical"],"sand-attack":[0,"ground","Status"],"headbutt":[70,"normal","Physical"],"horn-attack":[65,"normal","Physical"],"fury-attack":[15,"normal","Physical"],"horn-drill":[0,"normal","Physical"],"tackle":[40,"normal","Physical"],"body-slam":[85,"normal","Physical"],"wrap":[15,"normal","Physical"],"take-down":[90,"normal","Physical"],"thrash":[120,"normal","Physical"],"double-edge":[120,"normal","Physical"],"tail-whip":[0,"normal","Status"],"poison-sting":[15,"poison","Physical"],"twineedle":[25,"bug","Physical"],"pin-missile":[25,"bug","Physical"],"leer":[0,"normal","Status"],"bite":[60,"dark","Physical"],"growl":[0,"normal","Status"],"roar":[0,"normal","Status"],"sing":[0,"normal","Status"],"supersonic":[0,"normal","Status"],"sonic-boom":[0,"normal","Special"],"disable":[0,"normal","Status"],"acid":[40,"poison","Special"],"ember":[40,"fire","Special"],"flamethrower":[90,"fire","Special"],"mist":[0,"ice","Status"],"water-gun":[40,"water","Special"],"hydro-pump":[110,"water","Special"],"surf":[90,"water","Special"],"ice-beam":[90,"ice","Special"],"blizzard":[110,"ice","Special"],"psybeam":[65,"psychic","Special"],"bubble-beam":[65,"water","Special"],"aurora-beam":[65,"ice","Special"],"hyper-beam":[150,"normal","Special"],"peck":[35,"flying","Physical"],"drill-peck":[80,"flying","Physical"],"submission":[80,"fighting","Physical"],"low-kick":[0,"fighting","Physical"],"counter":[0,"fighting","Physical"],"seismic-toss":[0,"fighting","Physical"],"strength":[80,"normal","Physical"],"absorb":[20,"grass","Special"],"mega-drain":[40,"grass","Special"],"leech-seed":[0,"grass","Status"],"growth":[0,"normal","Status"],"razor-leaf":[55,"grass","Physical"],"solar-beam":[120,"grass","Special"],"poison-powder":[0,"poison","Status"],"stun-spore":[0,"grass","Status"],"sleep-powder":[0,"grass","Status"],"petal-dance":[120,"grass","Special"],"string-shot":[0,"bug","Status"],"dragon-rage":[0,"dragon","Special"],"fire-spin":[35,"fire","Special"],"thundershock":[40,"electric","Special"],"thunderbolt":[90,"electric","Special"],"thunder-wave":[0,"electric","Status"],"thunder":[110,"electric","Special"],"rock-throw":[50,"rock","Physical"],"earthquake":[100,"ground","Physical"],"fissure":[0,"ground","Physical"],"dig":[80,"ground","Physical"],"toxic":[0,"poison","Status"],"confusion":[50,"psychic","Special"],"psychic":[90,"psychic","Special"],"hypnosis":[0,"psychic","Status"],"meditate":[0,"psychic","Status"],"agility":[0,"psychic","Status"],"quick-attack":[40,"normal","Physical"],"rage":[20,"normal","Physical"],"teleport":[0,"psychic","Status"],"night-shade":[0,"ghost","Special"],"mimic":[0,"normal","Status"],"screech":[0,"normal","Status"],"double-team":[0,"normal","Status"],"recover":[0,"normal","Status"],"harden":[0,"normal","Status"],"minimize":[0,"normal","Status"],"smokescreen":[0,"normal","Status"],"confuse-ray":[0,"ghost","Status"],"withdraw":[0,"water","Status"],"defense-curl":[0,"normal","Status"],"barrier":[0,"psychic","Status"],"light-screen":[0,"psychic","Status"],"haze":[0,"ice","Status"],"reflect":[0,"psychic","Status"],"focus-energy":[0,"normal","Status"],"bide":[0,"normal","Physical"],"metronome":[0,"normal","Status"],"mirror-move":[0,"flying","Status"],"self-destruct":[200,"normal","Physical"],"egg-bomb":[100,"normal","Physical"],"lick":[30,"ghost","Physical"],"smog":[30,"poison","Special"],"sludge":[65,"poison","Special"],"bone-club":[65,"ground","Physical"],"fire-blast":[110,"fire","Special"],"waterfall":[80,"water","Physical"],"clamp":[35,"water","Physical"],"swift":[60,"normal","Special"],"skull-bash":[130,"normal","Physical"],"spike-cannon":[20,"normal","Physical"],"constrict":[10,"normal","Physical"],"amnesia":[0,"psychic","Status"],"kinesis":[0,"psychic","Status"],"soft-boiled":[0,"normal","Status"],"high-jump-kick":[130,"fighting","Physical"],"glare":[0,"normal","Status"],"dream-eater":[100,"psychic","Special"],"poison-gas":[0,"poison","Status"],"barrage":[15,"normal","Physical"],"leech-life":[80,"bug","Physical"],"lovely-kiss":[0,"normal","Status"],"sky-attack":[140,"flying","Physical"],"transform":[0,"normal","Status"],"bubble":[40,"water","Special"],"dizzy-punch":[70,"normal","Physical"],"spore":[0,"grass","Status"],"flash":[0,"normal","Status"],"psywave":[0,"psychic","Special"],"splash":[0,"normal","Status"],"acid-armor":[0,"poison","Status"],"crabhammer":[100,"water","Physical"],"explosion":[250,"normal","Physical"],"fury-swipes":[18,"normal","Physical"],"bonemerang":[50,"ground","Physical"],"rest":[0,"psychic","Status"],"rock-slide":[75,"rock","Physical"],"hyper-fang":[80,"normal","Physical"],"sharpen":[0,"normal","Status"],"conversion":[0,"normal","Status"],"tri-attack":[80,"normal","Special"],"super-fang":[0,"normal","Physical"],"slash":[70,"normal","Physical"],"substitute":[0,"normal","Status"],"struggle":[50,"normal","Physical"],"sketch":[0,"normal","Status"],"triple-kick":[10,"fighting","Physical"],"thief":[60,"dark","Physical"],"spider-web":[0,"bug","Status"],"mind-reader":[0,"normal","Status"],"nightmare":[0,"ghost","Status"],"flame-wheel":[60,"fire","Physical"],"snore":[50,"normal","Special"],"curse":[0,"ghost","Status"],"flail":[0,"normal","Physical"],"conversion-2":[0,"normal","Status"],"aeroblast":[100,"flying","Special"],"cotton-spore":[0,"grass","Status"],"reversal":[0,"fighting","Physical"],"spite":[0,"ghost","Status"],"powder-snow":[40,"ice","Special"],"protect":[0,"normal","Status"],"mach-punch":[40,"fighting","Physical"],"scary-face":[0,"normal","Status"],"faint-attack":[60,"dark","Physical"],"sweet-kiss":[0,"fairy","Status"],"belly-drum":[0,"normal","Status"],"sludge-bomb":[90,"poison","Special"],"mud-slap":[20,"ground","Special"],"octazooka":[65,"water","Special"],"spikes":[0,"ground","Status"],"zap-cannon":[120,"electric","Special"],"foresight":[0,"normal","Status"],"destiny-bond":[0,"ghost","Status"],"perish-song":[0,"normal","Status"],"icy-wind":[55,"ice","Special"],"detect":[0,"fighting","Status"],"bone-rush":[25,"ground","Physical"],"lock-on":[0,"normal","Status"],"outrage":[120,"dragon","Physical"],"sandstorm":[0,"rock","Status"],"giga-drain":[75,"grass","Special"],"endure":[0,"normal","Status"],"charm":[0,"fairy","Status"],"rollout":[30,"rock","Physical"],"false-swipe":[40,"normal","Physical"],"swagger":[0,"normal","Status"],"milk-drink":[0,"normal","Status"],"spark":[65,"electric","Physical"],"fury-cutter":[40,"bug","Physical"],"steel-wing":[70,"steel","Physical"],"mean-look":[0,"normal","Status"],"attract":[0,"normal","Status"],"sleep-talk":[0,"normal","Status"],"heal-bell":[0,"normal","Status"],"return":[0,"normal","Physical"],"present":[0,"normal","Physical"],"frustration":[0,"normal","Physical"],"safeguard":[0,"normal","Status"],"pain-split":[0,"normal","Status"],"sacred-fire":[100,"fire","Physical"],"magnitude":[0,"ground","Physical"],"dynamic-punch":[100,"fighting","Physical"],"megahorn":[120,"bug","Physical"],"dragon-breath":[60,"dragon","Special"],"baton-pass":[0,"normal","Status"],"encore":[0,"normal","Status"],"pursuit":[40,"dark","Physical"],"rapid-spin":[50,"normal","Physical"],"sweet-scent":[0,"normal","Status"],"iron-tail":[100,"steel","Physical"],"metal-claw":[50,"steel","Physical"],"vital-throw":[70,"fighting","Physical"],"morning-sun":[0,"normal","Status"],"synthesis":[0,"grass","Status"],"moonlight":[0,"fairy","Status"],"hidden-power":[60,"normal","Special"],"cross-chop":[100,"fighting","Physical"],"twister":[40,"dragon","Special"],"rain-dance":[0,"water","Status"],"sunny-day":[0,"fire","Status"],"crunch":[80,"dark","Physical"],"mirror-coat":[0,"psychic","Special"],"psych-up":[0,"normal","Status"],"extreme-speed":[80,"normal","Physical"],"ancient-power":[60,"rock","Special"],"shadow-ball":[80,"ghost","Special"],"future-sight":[120,"psychic","Special"],"rock-smash":[40,"fighting","Physical"],"whirlpool":[35,"water","Special"],"beat-up":[0,"dark","Physical"],"fake-out":[40,"normal","Physical"],"uproar":[90,"normal","Special"],"stockpile":[0,"normal","Status"],"spit-up":[0,"normal","Special"],"swallow":[0,"normal","Status"],"heat-wave":[95,"fire","Special"],"hail":[0,"ice","Status"],"torment":[0,"dark","Status"],"flatter":[0,"dark","Status"],"will-o-wisp":[0,"fire","Status"],"memento":[0,"dark","Status"],"facade":[70,"normal","Physical"],"focus-punch":[150,"fighting","Physical"],"smelling-salts":[70,"normal","Physical"],"follow-me":[0,"normal","Status"],"nature-power":[0,"normal","Status"],"charge":[0,"electric","Status"],"taunt":[0,"dark","Status"],"helping-hand":[0,"normal","Status"],"trick":[0,"psychic","Status"],"role-play":[0,"psychic","Status"],"wish":[0,"normal","Status"],"assist":[0,"normal","Status"],"ingrain":[0,"grass","Status"],"superpower":[120,"fighting","Physical"],"magic-coat":[0,"psychic","Status"],"recycle":[0,"normal","Status"],"revenge":[60,"fighting","Physical"],"brick-break":[75,"fighting","Physical"],"yawn":[0,"normal","Status"],"knock-off":[65,"dark","Physical"],"endeavor":[0,"normal","Physical"],"eruption":[150,"fire","Special"],"skill-swap":[0,"psychic","Status"],"imprison":[0,"psychic","Status"],"refresh":[0,"normal","Status"],"grudge":[0,"ghost","Status"],"snatch":[0,"dark","Status"],"secret-power":[70,"normal","Physical"],"dive":[80,"water","Physical"],"arm-thrust":[15,"fighting","Physical"],"camouflage":[0,"normal","Status"],"tail-glow":[0,"bug","Status"],"luster-purge":[70,"psychic","Special"],"mist-ball":[70,"psychic","Special"],"feather-dance":[0,"flying","Status"],"teeter-dance":[0,"normal","Status"],"blaze-kick":[85,"fire","Physical"],"mud-sport":[0,"ground","Status"],"ice-ball":[30,"ice","Physical"],"needle-arm":[60,"grass","Physical"],"slack-off":[0,"normal","Status"],"hyper-voice":[90,"normal","Special"],"poison-fang":[50,"poison","Physical"],"crush-claw":[75,"normal","Physical"],"blast-burn":[150,"fire","Special"],"hydro-cannon":[150,"water","Special"],"meteor-mash":[90,"steel","Physical"],"astonish":[30,"ghost","Physical"],"weather-ball":[50,"normal","Special"],"aromatherapy":[0,"grass","Status"],"fake-tears":[0,"dark","Status"],"air-cutter":[60,"flying","Special"],"overheat":[130,"fire","Special"],"odor-sleuth":[0,"normal","Status"],"rock-tomb":[60,"rock","Physical"],"silver-wind":[60,"bug","Special"],"metal-sound":[0,"steel","Status"],"grass-whistle":[0,"grass","Status"],"tickle":[0,"normal","Status"],"cosmic-power":[0,"psychic","Status"],"water-spout":[150,"water","Special"],"signal-beam":[75,"bug","Special"],"shadow-punch":[60,"ghost","Physical"],"extrasensory":[80,"psychic","Special"],"sky-uppercut":[85,"fighting","Physical"],"sand-tomb":[35,"ground","Physical"],"sheer-cold":[0,"ice","Special"],"muddy-water":[90,"water","Special"],"bullet-seed":[25,"grass","Physical"],"aerial-ace":[60,"flying","Physical"],"icicle-spear":[25,"ice","Physical"],"iron-defense":[0,"steel","Status"],"block":[0,"normal","Status"],"howl":[0,"normal","Status"],"dragon-claw":[80,"dragon","Physical"],"frenzy-plant":[150,"grass","Special"],"bulk-up":[0,"fighting","Status"],"bounce":[85,"flying","Physical"],"mud-shot":[55,"ground","Special"],"poison-tail":[50,"poison","Physical"],"covet":[60,"normal","Physical"],"volt-tackle":[120,"electric","Physical"],"magical-leaf":[60,"grass","Special"],"water-sport":[0,"water","Status"],"calm-mind":[0,"psychic","Status"],"leaf-blade":[90,"grass","Physical"],"dragon-dance":[0,"dragon","Status"],"rock-blast":[25,"rock","Physical"],"shock-wave":[60,"electric","Special"],"water-pulse":[60,"water","Special"],"doom-desire":[140,"steel","Special"],"psycho-boost":[140,"psychic","Special"],"roost":[0,"flying","Status"],"gravity":[0,"psychic","Status"],"miracle-eye":[0,"psychic","Status"],"wake-up-slap":[70,"fighting","Physical"],"hammer-arm":[100,"fighting","Physical"],"gyro-ball":[0,"steel","Physical"],"healing-wish":[0,"psychic","Status"],"brine":[65,"water","Special"],"natural-gift":[0,"normal","Physical"],"feint":[30,"normal","Physical"],"pluck":[60,"flying","Physical"],"tailwind":[0,"flying","Status"],"acupressure":[0,"normal","Status"],"metal-burst":[0,"steel","Physical"],"u-turn":[70,"bug","Physical"],"close-combat":[120,"fighting","Physical"],"payback":[50,"dark","Physical"],"assurance":[60,"dark","Physical"],"embargo":[0,"dark","Status"],"fling":[0,"dark","Physical"],"psycho-shift":[0,"psychic","Status"],"trump-card":[0,"normal","Special"],"heal-block":[0,"psychic","Status"],"wring-out":[0,"normal","Special"],"power-trick":[0,"psychic","Status"],"gastro-acid":[0,"poison","Status"],"lucky-chant":[0,"normal","Status"],"me-first":[0,"normal","Status"],"copycat":[0,"normal","Status"],"power-swap":[0,"psychic","Status"],"guard-swap":[0,"psychic","Status"],"punishment":[0,"dark","Physical"],"last-resort":[140,"normal","Physical"],"worry-seed":[0,"grass","Status"],"sucker-punch":[70,"dark","Physical"],"toxic-spikes":[0,"poison","Status"],"heart-swap":[0,"psychic","Status"],"aqua-ring":[0,"water","Status"],"magnet-rise":[0,"electric","Status"],"flare-blitz":[120,"fire","Physical"],"force-palm":[60,"fighting","Physical"],"aura-sphere":[80,"fighting","Special"],"rock-polish":[0,"rock","Status"],"poison-jab":[80,"poison","Physical"],"dark-pulse":[80,"dark","Special"],"night-slash":[70,"dark","Physical"],"aqua-tail":[90,"water","Physical"],"seed-bomb":[80,"grass","Physical"],"air-slash":[75,"flying","Special"],"x-scissor":[80,"bug","Physical"],"bug-buzz":[90,"bug","Special"],"dragon-pulse":[85,"dragon","Special"],"dragon-rush":[100,"dragon","Physical"],"power-gem":[80,"rock","Special"],"drain-punch":[75,"fighting","Physical"],"vacuum-wave":[40,"fighting","Special"],"focus-blast":[120,"fighting","Special"],"energy-ball":[90,"grass","Special"],"brave-bird":[120,"flying","Physical"],"earth-power":[90,"ground","Special"],"switcheroo":[0,"dark","Status"],"giga-impact":[150,"normal","Physical"],"nasty-plot":[0,"dark","Status"],"bullet-punch":[40,"steel","Physical"],"avalanche":[60,"ice","Physical"],"ice-shard":[40,"ice","Physical"],"shadow-claw":[70,"ghost","Physical"],"thunder-fang":[65,"electric","Physical"],"ice-fang":[65,"ice","Physical"],"fire-fang":[65,"fire","Physical"],"shadow-sneak":[40,"ghost","Physical"],"mud-bomb":[65,"ground","Special"],"psycho-cut":[70,"psychic","Physical"],"zen-headbutt":[80,"psychic","Physical"],"mirror-shot":[65,"steel","Special"],"flash-cannon":[80,"steel","Special"],"rock-climb":[90,"normal","Physical"],"draco-meteor":[130,"dragon","Special"],"discharge":[80,"electric","Special"],"lava-plume":[80,"fire","Special"],"leaf-storm":[130,"grass","Special"],"power-whip":[120,"grass","Physical"],"rock-wrecker":[150,"rock","Physical"],"cross-poison":[70,"poison","Physical"],"gunk-shot":[120,"poison","Physical"],"iron-head":[80,"steel","Physical"],"magnet-bomb":[60,"steel","Physical"],"stone-edge":[100,"rock","Physical"],"captivate":[0,"normal","Status"],"stealth-rock":[0,"rock","Status"],"grass-knot":[0,"grass","Special"],"chatter":[65,"flying","Special"],"judgment":[100,"normal","Special"],"bug-bite":[60,"bug","Physical"],"charge-beam":[50,"electric","Special"],"wood-hammer":[120,"grass","Physical"],"aqua-jet":[40,"water","Physical"],"attack-order":[90,"bug","Physical"],"defend-order":[0,"bug","Status"],"heal-order":[0,"bug","Status"],"head-smash":[150,"rock","Physical"],"double-hit":[35,"normal","Physical"],"roar-of-time":[150,"dragon","Special"],"spacial-rend":[100,"dragon","Special"],"lunar-dance":[0,"psychic","Status"],"crush-grip":[0,"normal","Physical"],"magma-storm":[100,"fire","Special"],"dark-void":[0,"dark","Status"],"seed-flare":[120,"grass","Special"],"ominous-wind":[60,"ghost","Special"],"shadow-force":[120,"ghost","Physical"],"hone-claws":[0,"dark","Status"],"wide-guard":[0,"rock","Status"],"guard-split":[0,"psychic","Status"],"power-split":[0,"psychic","Status"],"wonder-room":[0,"psychic","Status"],"psyshock":[80,"psychic","Special"],"venoshock":[65,"poison","Special"],"autotomize":[0,"steel","Status"],"rage-powder":[0,"bug","Status"],"telekinesis":[0,"psychic","Status"],"magic-room":[0,"psychic","Status"],"smack-down":[50,"rock","Physical"],"storm-throw":[60,"fighting","Physical"],"flame-burst":[70,"fire","Special"],"sludge-wave":[95,"poison","Special"],"quiver-dance":[0,"bug","Status"],"heavy-slam":[0,"steel","Physical"],"synchronoise":[120,"psychic","Special"],"electro-ball":[0,"electric","Special"],"soak":[0,"water","Status"],"flame-charge":[50,"fire","Physical"],"coil":[0,"poison","Status"],"low-sweep":[65,"fighting","Physical"],"acid-spray":[40,"poison","Special"],"foul-play":[95,"dark","Physical"],"simple-beam":[0,"normal","Status"],"entrainment":[0,"normal","Status"],"after-you":[0,"normal","Status"],"round":[60,"normal","Special"],"echoed-voice":[40,"normal","Special"],"chip-away":[70,"normal","Physical"],"clear-smog":[50,"poison","Special"],"stored-power":[20,"psychic","Special"],"quick-guard":[0,"fighting","Status"],"ally-switch":[0,"psychic","Status"],"scald":[80,"water","Special"],"shell-smash":[0,"normal","Status"],"heal-pulse":[0,"psychic","Status"],"hex":[65,"ghost","Special"],"sky-drop":[60,"flying","Physical"],"shift-gear":[0,"steel","Status"],"circle-throw":[60,"fighting","Physical"],"incinerate":[60,"fire","Special"],"quash":[0,"dark","Status"],"acrobatics":[55,"flying","Physical"],"reflect-type":[0,"normal","Status"],"retaliate":[70,"normal","Physical"],"final-gambit":[0,"fighting","Special"],"bestow":[0,"normal","Status"],"inferno":[100,"fire","Special"],"water-pledge":[80,"water","Special"],"fire-pledge":[80,"fire","Special"],"grass-pledge":[80,"grass","Special"],"volt-switch":[70,"electric","Special"],"struggle-bug":[50,"bug","Special"],"bulldoze":[60,"ground","Physical"],"frost-breath":[60,"ice","Special"],"dragon-tail":[60,"dragon","Physical"],"work-up":[0,"normal","Status"],"electroweb":[55,"electric","Special"],"wild-charge":[90,"electric","Physical"],"drill-run":[80,"ground","Physical"],"dual-chop":[40,"dragon","Physical"],"heart-stamp":[60,"psychic","Physical"],"horn-leech":[75,"grass","Physical"],"sacred-sword":[90,"fighting","Physical"],"razor-shell":[75,"water","Physical"],"heat-crash":[0,"fire","Physical"],"leaf-tornado":[65,"grass","Special"],"steamroller":[65,"bug","Physical"],"cotton-guard":[0,"grass","Status"],"night-daze":[85,"dark","Special"],"psystrike":[100,"psychic","Special"],"tail-slap":[25,"normal","Physical"],"hurricane":[110,"flying","Special"],"head-charge":[120,"normal","Physical"],"gear-grind":[50,"steel","Physical"],"searing-shot":[100,"fire","Special"],"techno-blast":[120,"normal","Special"],"relic-song":[75,"normal","Special"],"secret-sword":[85,"fighting","Special"],"glaciate":[65,"ice","Special"],"bolt-strike":[130,"electric","Physical"],"blue-flare":[130,"fire","Special"],"fiery-dance":[80,"fire","Special"],"freeze-shock":[140,"ice","Physical"],"ice-burn":[140,"ice","Special"],"snarl":[55,"dark","Special"],"icicle-crash":[85,"ice","Physical"],"v-create":[180,"fire","Physical"],"fusion-flare":[100,"fire","Special"],"fusion-bolt":[100,"electric","Physical"],"flying-press":[100,"fighting","Physical"],"mat-block":[0,"fighting","Status"],"belch":[120,"poison","Special"],"rototiller":[0,"ground","Status"],"sticky-web":[0,"bug","Status"],"fell-stinger":[50,"bug","Physical"],"phantom-force":[90,"ghost","Physical"],"trick-or-treat":[0,"ghost","Status"],"noble-roar":[0,"normal","Status"],"ion-deluge":[0,"electric","Status"],"parabolic-charge":[65,"electric","Special"],"forests-curse":[0,"grass","Status"],"petal-blizzard":[90,"grass","Physical"],"freeze-dry":[70,"ice","Special"],"disarming-voice":[40,"fairy","Special"],"parting-shot":[0,"dark","Status"],"topsy-turvy":[0,"dark","Status"],"draining-kiss":[50,"fairy","Special"],"crafty-shield":[0,"fairy","Status"],"flower-shield":[0,"fairy","Status"],"grassy-terrain":[0,"grass","Status"],"misty-terrain":[0,"fairy","Status"],"electrify":[0,"electric","Status"],"play-rough":[90,"fairy","Physical"],"fairy-wind":[40,"fairy","Special"],"moonblast":[95,"fairy","Special"],"boomburst":[140,"normal","Special"],"fairy-lock":[0,"fairy","Status"],"kings-shield":[0,"steel","Status"],"play-nice":[0,"normal","Status"],"confide":[0,"normal","Status"],"diamond-storm":[100,"rock","Physical"],"steam-eruption":[110,"water","Special"],"hyperspace-hole":[80,"psychic","Special"],"water-shuriken":[15,"water","Special"],"mystical-fire":[75,"fire","Special"],"spiky-shield":[0,"grass","Status"],"aromatic-mist":[0,"fairy","Status"],"eerie-impulse":[0,"electric","Status"],"venom-drench":[0,"poison","Status"],"powder":[0,"bug","Status"],"geomancy":[0,"fairy","Status"],"magnetic-flux":[0,"electric","Status"],"happy-hour":[0,"normal","Status"],"electric-terrain":[0,"electric","Status"],"dazzling-gleam":[80,"fairy","Special"],"celebrate":[0,"normal","Status"],"hold-hands":[0,"normal","Status"],"baby-doll-eyes":[0,"fairy","Status"],"nuzzle":[20,"electric","Physical"],"hold-back":[40,"normal","Physical"],"infestation":[20,"bug","Special"],"power-up-punch":[40,"fighting","Physical"],"oblivion-wing":[80,"flying","Special"],"thousand-arrows":[90,"ground","Physical"],"thousand-waves":[90,"ground","Physical"],"lands-wrath":[90,"ground","Physical"],"light-of-ruin":[140,"fairy","Special"],"origin-pulse":[110,"water","Special"],"precipice-blades":[120,"ground","Physical"],"dragon-ascent":[120,"flying","Physical"],"hyperspace-fury":[100,"dark","Physical"],"shore-up":[0,"ground","Status"],"first-impression":[90,"bug","Physical"],"baneful-bunker":[0,"poison","Status"],"spirit-shackle":[80,"ghost","Physical"],"darkest-lariat":[85,"dark","Physical"],"sparkling-aria":[90,"water","Special"],"ice-hammer":[100,"ice","Physical"],"floral-healing":[0,"fairy","Status"],"high-horsepower":[95,"ground","Physical"],"strength-sap":[0,"grass","Status"],"solar-blade":[125,"grass","Physical"],"leafage":[40,"grass","Physical"],"spotlight":[0,"normal","Status"],"toxic-thread":[0,"poison","Status"],"laser-focus":[0,"normal","Status"],"gear-up":[0,"steel","Status"],"throat-chop":[80,"dark","Physical"],"pollen-puff":[90,"bug","Special"],"anchor-shot":[80,"steel","Physical"],"psychic-terrain":[0,"psychic","Status"],"lunge":[80,"bug","Physical"],"fire-lash":[80,"fire","Physical"],"power-trip":[20,"dark","Physical"],"burn-up":[130,"fire","Special"],"speed-swap":[0,"psychic","Status"],"smart-strike":[70,"steel","Physical"],"purify":[0,"poison","Status"],"revelation-dance":[90,"normal","Special"],"core-enforcer":[100,"dragon","Special"],"trop-kick":[70,"grass","Physical"],"instruct":[0,"psychic","Status"],"beak-blast":[100,"flying","Physical"],"clanging-scales":[110,"dragon","Special"],"dragon-hammer":[90,"dragon","Physical"],"brutal-swing":[60,"dark","Physical"],"aurora-veil":[0,"ice","Status"],"shell-trap":[150,"fire","Special"],"fleur-cannon":[130,"fairy","Special"],"psychic-fangs":[85,"psychic","Physical"],"stomping-tantrum":[75,"ground","Physical"],"shadow-bone":[85,"ghost","Physical"],"accelerock":[40,"rock","Physical"],"liquidation":[85,"water","Physical"],"prismatic-laser":[160,"psychic","Special"],"spectral-thief":[90,"ghost","Physical"],"sunsteel-strike":[100,"steel","Physical"],"moongeist-beam":[100,"ghost","Special"],"tearful-look":[0,"normal","Status"],"zing-zap":[80,"electric","Physical"],"nature-madness":[0,"fairy","Special"],"multi-attack":[120,"normal","Physical"],"mind-blown":[150,"fire","Special"],"plasma-fists":[100,"electric","Physical"],"photon-geyser":[100,"psychic","Special"],"zippy-zap":[50,"electric","Physical"],"splishy-splash":[90,"water","Special"],"floaty-fall":[90,"flying","Physical"],"pika-papow":[0,"electric","Special"],"bouncy-bubble":[90,"water","Special"],"buzzy-buzz":[90,"electric","Special"],"sizzly-slide":[90,"fire","Physical"],"glitzy-glow":[90,"psychic","Special"],"baddy-bad":[90,"dark","Special"],"sappy-seed":[90,"grass","Physical"],"freezy-frost":[90,"ice","Special"],"sparkly-swirl":[90,"fairy","Special"],"veevee-volley":[0,"normal","Physical"],"double-iron-bash":[60,"steel","Physical"],"dynamax-cannon":[100,"dragon","Special"],"snipe-shot":[80,"water","Special"],"jaw-lock":[80,"dark","Physical"],"stuff-cheeks":[0,"normal","Status"],"no-retreat":[0,"fighting","Status"],"tar-shot":[0,"rock","Status"],"magic-powder":[0,"psychic","Status"],"dragon-darts":[50,"dragon","Physical"],"teatime":[0,"normal","Status"],"octolock":[0,"fighting","Status"],"bolt-beak":[85,"electric","Physical"],"fishious-rend":[85,"water","Physical"],"court-change":[0,"normal","Status"],"clangorous-soul":[0,"dragon","Status"],"body-press":[80,"fighting","Physical"],"decorate":[0,"fairy","Status"],"drum-beating":[80,"grass","Physical"],"snap-trap":[35,"grass","Physical"],"pyro-ball":[120,"fire","Physical"],"behemoth-blade":[100,"steel","Physical"],"behemoth-bash":[100,"steel","Physical"],"aura-wheel":[110,"electric","Physical"],"breaking-swipe":[60,"dragon","Physical"],"branch-poke":[40,"grass","Physical"],"overdrive":[80,"electric","Special"],"apple-acid":[80,"grass","Special"],"grav-apple":[80,"grass","Physical"],"spirit-break":[75,"fairy","Physical"],"strange-steam":[90,"fairy","Special"],"life-dew":[0,"water","Status"],"obstruct":[0,"dark","Status"],"false-surrender":[80,"dark","Physical"],"meteor-assault":[150,"fighting","Physical"],"eternabeam":[160,"dragon","Special"],"steel-beam":[140,"steel","Special"],"expanding-force":[80,"psychic","Special"],"steel-roller":[130,"steel","Physical"],"scale-shot":[25,"dragon","Physical"],"meteor-beam":[120,"rock","Special"],"shell-side-arm":[90,"poison","Special"],"misty-explosion":[100,"fairy","Special"],"grassy-glide":[70,"grass","Physical"],"rising-voltage":[70,"electric","Special"],"terrain-pulse":[50,"normal","Special"],"skitter-smack":[70,"bug","Physical"],"burning-jealousy":[70,"fire","Special"],"lash-out":[75,"dark","Physical"],"poltergeist":[110,"ghost","Physical"],"corrosive-gas":[0,"poison","Status"],"coaching":[0,"fighting","Status"],"flip-turn":[60,"water","Physical"],"triple-axel":[20,"ice","Physical"],"dual-wingbeat":[40,"flying","Physical"],"scorching-sands":[70,"ground","Special"],"jungle-healing":[0,"grass","Status"],"wicked-blow":[80,"dark","Physical"],"surging-strikes":[25,"water","Physical"],"thunder-cage":[80,"electric","Special"],"dragon-energy":[150,"dragon","Special"],"freezing-glare":[90,"psychic","Special"],"fiery-wrath":[90,"dark","Special"],"thunderous-kick":[90,"fighting","Physical"],"glacial-lance":[130,"ice","Physical"],"astral-barrage":[120,"ghost","Special"],"eerie-spell":[80,"psychic","Special"],"dire-claw":[80,"poison","Physical"],"psyshield-bash":[70,"psychic","Physical"],"stone-axe":[65,"rock","Physical"],"springtide-storm":[100,"fairy","Special"],"mystical-power":[70,"psychic","Special"],"raging-fury":[120,"fire","Physical"],"wave-crash":[120,"water","Physical"],"chloroblast":[150,"grass","Special"],"mountain-gale":[100,"ice","Physical"],"victory-dance":[0,"fighting","Status"],"headlong-rush":[120,"ground","Physical"],"barb-barrage":[60,"poison","Physical"],"esper-wing":[80,"psychic","Special"],"bitter-malice":[75,"ghost","Special"],"shelter":[0,"steel","Status"],"triple-arrows":[90,"fighting","Physical"],"infernal-parade":[60,"ghost","Special"],"ceaseless-edge":[65,"dark","Physical"],"bleakwind-storm":[100,"flying","Special"],"wildbolt-storm":[100,"electric","Special"],"sandsear-storm":[100,"ground","Special"],"lunar-blessing":[0,"psychic","Status"],"take-heart":[0,"psychic","Status"],"tera-blast":[80,"normal","Special"],"silk-trap":[0,"bug","Status"],"axe-kick":[120,"fighting","Physical"],"last-respects":[50,"ghost","Physical"],"lumina-crash":[80,"psychic","Special"],"order-up":[80,"dragon","Physical"],"jet-punch":[60,"water","Physical"],"spicy-extract":[0,"grass","Status"],"spin-out":[100,"steel","Physical"],"population-bomb":[20,"normal","Physical"],"ice-spinner":[80,"ice","Physical"],"glaive-rush":[120,"dragon","Physical"],"revival-blessing":[0,"normal","Status"],"salt-cure":[40,"rock","Physical"],"triple-dive":[30,"water","Physical"],"mortal-spin":[30,"poison","Physical"],"doodle":[0,"normal","Status"],"fillet-away":[0,"normal","Status"],"kowtow-cleave":[85,"dark","Physical"],"flower-trick":[70,"grass","Physical"],"torch-song":[80,"fire","Special"],"aqua-step":[80,"water","Physical"],"raging-bull":[90,"normal","Physical"],"make-it-rain":[120,"steel","Special"],"psyblade":[80,"psychic","Physical"],"hydro-steam":[80,"water","Special"],"ruination":[0,"dark","Special"],"collision-course":[100,"fighting","Physical"],"electro-drift":[100,"electric","Special"],"shed-tail":[0,"normal","Status"],"chilly-reception":[0,"ice","Status"],"tidy-up":[0,"normal","Status"],"snowscape":[0,"ice","Status"],"pounce":[50,"bug","Physical"],"trailblaze":[50,"grass","Physical"],"chilling-water":[50,"water","Special"],"hyper-drill":[100,"normal","Physical"],"twin-beam":[40,"psychic","Special"],"rage-fist":[50,"ghost","Physical"],"armor-cannon":[120,"fire","Special"],"bitter-blade":[90,"fire","Physical"],"double-shock":[120,"electric","Physical"],"gigaton-hammer":[160,"steel","Physical"],"comeuppance":[0,"dark","Physical"],"aqua-cutter":[70,"water","Physical"],"blazing-torque":[80,"fire","Physical"],"wicked-torque":[80,"dark","Physical"],"noxious-torque":[100,"poison","Physical"],"combat-torque":[100,"fighting","Physical"],"magical-torque":[100,"fairy","Physical"],"blood-moon":[140,"normal","Special"],"matcha-gotcha":[80,"grass","Special"],"syrup-bomb":[60,"grass","Special"],"ivy-cudgel":[100,"grass","Physical"],"electro-shot":[130,"electric","Special"],"fickle-beam":[80,"dragon","Special"],"burning-bulwark":[0,"fire","Status"],"thunderclap":[70,"electric","Special"],"mighty-cleave":[95,"rock","Physical"],"tachyon-cutter":[50,"steel","Special"],"hard-press":[0,"steel","Physical"],"dragon-cheer":[0,"dragon","Status"],"alluring-voice":[80,"fairy","Special"],"temper-flare":[75,"fire","Physical"],"supercell-slam":[100,"electric","Physical"],"psychic-noise":[75,"psychic","Special"],"upper-hand":[65,"fighting","Physical"],"malignant-chain":[100,"poison","Special"]
         };
 
-        const pokemonList = [];
-        const loadedPokemon = [];
-        let currentOffset = 0;
-        const BATCH_SIZE = 50;
-
-        let player = {};
-        let enemy = {};
-        let selectedPlayerIndex = null;
-        let selectionPhase = 'player';
-        let isShinyMode = false;
-        let isMoveMode = false;
+        const pokemonList = []; const loadedPokemon = []; let currentOffset = 0; const BATCH_SIZE = 50;
+        let player = {}; let enemy = {}; let selectedPlayerIndex = null; let selectionPhase = 'player';
+        let isShinyMode = false; let isMoveMode = false; let playerShiny = false; let enemyShiny = false;
+        let currentMoveSelectionTarget = 'player'; let finalPlayerMoves = null; let finalEnemyMoves = null; let tempSelectedMoves = [];
+        const welcomeBgm = document.getElementById('welcome-bgm'); const battleBgm = document.getElementById('battle-bgm');
+        const victoryBgm = document.getElementById('victory-bgm'); const dialogueBox = document.getElementById('dialogue-box');
         
-        let playerShiny = false;
-        let enemyShiny = false;
-        let currentMoveSelectionTarget = 'player';
-        let finalPlayerMoves = null;
-        let finalEnemyMoves = null;
-        let tempSelectedMoves = [];
-        
-        const welcomeBgm = document.getElementById('welcome-bgm');
-        const battleBgm = document.getElementById('battle-bgm');
-        const victoryBgm = document.getElementById('victory-bgm');
-        const dialogueBox = document.getElementById('dialogue-box');
+        // PRE-SEED CACHE WITH MASTER LIST TO PREVENT API LAG
+        const moveCache = { ...MOVES_DB, "struggle": {power: 50, type: "normal", cat: "Physical"} };
 
         window.onload = async () => { await fetchPokemonList(); };
-
-        // --- FETCHING ---
         async function fetchPokemonList() {
-            const loadingBar = document.getElementById('loading-bar-fill');
-            const loadingText = document.getElementById('loading-text');
-            const startBtn = document.getElementById('start-btn');
-            const loadingContainer = document.getElementById('loading-container');
-
-            const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=10000');
-            const data = await response.json();
-            
-            data.results.forEach((p, index) => {
-                const id = p.url.split('/')[6];
-                if (id) {
-                    pokemonList.push({
-                        name: p.name,
-                        url: p.url,
-                        id: parseInt(id),
-                        sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-                        spriteShiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`,
-                        fullData: null 
-                    });
-                }
-            });
-
-            loadingBar.style.width = "100%";
-            loadingText.innerText = `${pokemonList.length} POKÉMON CAUGHT!`;
-            setTimeout(() => {
-                loadingContainer.style.display = 'none';
-                startBtn.style.display = 'inline-block';
-            }, 500);
+            const loadingBar = document.getElementById('loading-bar-fill'); const loadingText = document.getElementById('loading-text'); const startBtn = document.getElementById('start-btn'); const loadingContainer = document.getElementById('loading-container');
+            const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=10000'); const data = await response.json();
+            data.results.forEach((p, index) => { const id = p.url.split('/')[6]; if (id) { pokemonList.push({ name: p.name, url: p.url, id: parseInt(id), sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`, spriteShiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`, fullData: null }); } });
+            loadingBar.style.width = "100%"; loadingText.innerText = `${pokemonList.length} POKÉMON CAUGHT!`;
+            setTimeout(() => { loadingContainer.style.display = 'none'; startBtn.style.display = 'inline-block'; }, 500);
         }
-
         async function ensurePokemonData(pIndex) {
-            const p = pokemonList[pIndex];
-            if (p.fullData) return p.fullData;
+            const p = pokemonList[pIndex]; if (p.fullData) return p.fullData;
             document.getElementById('data-loading').style.display = 'flex';
             try {
-                const res = await fetch(p.url);
-                const details = await res.json();
-                
-                const s = details.sprites;
-                const other = s.other || {};
-                const showdown = other.showdown || {};
-                
+                const res = await fetch(p.url); const details = await res.json();
+                const s = details.sprites; const other = s.other || {}; const showdown = other.showdown || {};
                 p.fullData = {
                     id: details.id, name: details.name, types: details.types.map(t => t.type.name), ability: details.abilities[0].ability.name,
                     stats: { hp: details.stats[0].base_stat, atk: details.stats[1].base_stat, def: details.stats[2].base_stat, spa: details.stats[3].base_stat, spd: details.stats[4].base_stat, spe: details.stats[5].base_stat },
-                    
-                    front: showdown.front_default || s.front_default || p.sprite,
-                    back: showdown.back_default || s.back_default || s.front_default,
-                    frontShiny: showdown.front_shiny || s.front_shiny || p.spriteShiny,
-                    backShiny: showdown.back_shiny || s.back_shiny || s.front_shiny,
-                    
+                    front: showdown.front_default || s.front_default || p.sprite, back: showdown.back_default || s.back_default || s.front_default,
+                    frontShiny: showdown.front_shiny || s.front_shiny || p.spriteShiny, backShiny: showdown.back_shiny || s.back_shiny || s.front_shiny,
                     rawMoves: details.moves.map(m => m.move.name)
                 };
             } catch (e) { console.error("Failed data", e); }
-            document.getElementById('data-loading').style.display = 'none';
-            return p.fullData;
+            document.getElementById('data-loading').style.display = 'none'; return p.fullData;
         }
 
-        // --- INFINITE SCROLL ---
-        const charGrid = document.getElementById('char-grid');
-        charGrid.addEventListener('scroll', () => {
-            if (charGrid.scrollTop + charGrid.clientHeight >= charGrid.scrollHeight - 50) {
-                appendPokemonBatch();
-            }
-        });
-
-        function renderSelectionGrid() {
-            charGrid.innerHTML = "";
-            currentOffset = 0;
-            const randomCard = document.createElement('div');
-            randomCard.className = 'char-card random-card';
-            randomCard.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random"><p>Random</p>`;
-            randomCard.onclick = () => handleSelection(-1);
-            charGrid.appendChild(randomCard);
-            appendPokemonBatch();
-        }
-
-        function appendPokemonBatch() {
-            const filterText = document.getElementById('search-bar').value.toLowerCase();
-            const filtered = pokemonList.filter(p => p.name.includes(filterText));
-            const nextBatch = filtered.slice(currentOffset, currentOffset + BATCH_SIZE);
-            if(nextBatch.length === 0) return;
-            nextBatch.forEach((p) => {
-                const originalIndex = pokemonList.indexOf(p);
-                const card = document.createElement('div');
-                card.className = 'char-card';
-                const imgUrl = isShinyMode ? p.spriteShiny : p.sprite;
-                card.innerHTML = `<img src="${imgUrl}" alt="${p.name}" loading="lazy"><p>${p.name}</p>`;
-                card.onclick = () => handleSelection(originalIndex);
-                charGrid.appendChild(card);
-            });
-            currentOffset += BATCH_SIZE;
-        }
-
+        const charGrid = document.getElementById('char-grid'); charGrid.addEventListener('scroll', () => { if (charGrid.scrollTop + charGrid.clientHeight >= charGrid.scrollHeight - 50) { appendPokemonBatch(); } });
+        function renderSelectionGrid() { charGrid.innerHTML = ""; currentOffset = 0; const randomCard = document.createElement('div'); randomCard.className = 'char-card random-card'; randomCard.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Random"><p>Random</p>`; randomCard.onclick = () => handleSelection(-1); charGrid.appendChild(randomCard); appendPokemonBatch(); }
+        function appendPokemonBatch() { const filterText = document.getElementById('search-bar').value.toLowerCase(); const filtered = pokemonList.filter(p => p.name.includes(filterText)); const nextBatch = filtered.slice(currentOffset, currentOffset + BATCH_SIZE); if(nextBatch.length === 0) return; nextBatch.forEach((p) => { const originalIndex = pokemonList.indexOf(p); const card = document.createElement('div'); card.className = 'char-card'; const imgUrl = isShinyMode ? p.spriteShiny : p.sprite; card.innerHTML = `<img src="${imgUrl}" alt="${p.name}" loading="lazy"><p>${p.name}</p>`; card.onclick = () => handleSelection(originalIndex); charGrid.appendChild(card); }); currentOffset += BATCH_SIZE; }
         function filterGrid() { renderSelectionGrid(); }
-
-        // --- UI & LOGIC ---
-        function switchScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
-
-        function startExperience() {
-            if(welcomeBgm.paused) { welcomeBgm.currentTime = 1; welcomeBgm.volume = 0.3; welcomeBgm.play().catch(e => console.log(e)); }
-            goToSelect();
-        }
-
-        function goToSelect() {
-            selectionPhase = 'player';
-            selectedPlayerIndex = null;
-            finalPlayerMoves = null;
-            finalEnemyMoves = null;
-            document.getElementById('select-title').innerText = "Choose Your Pokémon";
-            document.getElementById('search-bar').value = "";
-            resetToggles(); 
-            renderSelectionGrid();
-            switchScreen('select-screen');
-        }
-
-        function resetToggles() {
-            document.getElementById('shiny-mode').checked = false;
-            document.getElementById('move-mode').checked = false;
-            isShinyMode = false; isMoveMode = false;
-        }
-
-        function toggleShinyMode() {
-            isShinyMode = document.getElementById('shiny-mode').checked;
-            renderSelectionGrid();
-        }
-
+        function switchScreen(screenId) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(screenId).classList.add('active'); }
+        function startExperience() { if(welcomeBgm.paused) { welcomeBgm.currentTime = 1; welcomeBgm.volume = 0.3; welcomeBgm.play().catch(e => console.log(e)); } goToSelect(); }
+        function goToSelect() { selectionPhase = 'player'; selectedPlayerIndex = null; finalPlayerMoves = null; finalEnemyMoves = null; document.getElementById('select-title').innerText = "Choose Your Pokémon"; document.getElementById('search-bar').value = ""; resetToggles(); renderSelectionGrid(); switchScreen('select-screen'); }
+        function resetToggles() { document.getElementById('shiny-mode').checked = false; document.getElementById('move-mode').checked = false; isShinyMode = false; isMoveMode = false; }
+        function toggleShinyMode() { isShinyMode = document.getElementById('shiny-mode').checked; renderSelectionGrid(); }
         function toggleMoveMode() { isMoveMode = document.getElementById('move-mode').checked; }
 
         async function handleSelection(index) {
-            let pIndex = index;
-            let isRandom = (index === -1);
-            if (isRandom) pIndex = Math.floor(Math.random() * pokemonList.length);
-
+            let pIndex = index; let isRandom = (index === -1); if (isRandom) pIndex = Math.floor(Math.random() * pokemonList.length);
             let chosenShiny = isRandom ? (Math.random() < 0.5) : isShinyMode;
-            if (selectionPhase === 'player') playerShiny = chosenShiny;
-            else enemyShiny = chosenShiny;
-
+            if (selectionPhase === 'player') playerShiny = chosenShiny; else enemyShiny = chosenShiny;
             await ensurePokemonData(pIndex);
-
-            if (selectionPhase === 'player') {
-                selectedPlayerIndex = pIndex;
-                if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'player');
-                else proceedToEnemySelect();
-            } else {
-                if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'enemy');
-                else startGame(selectedPlayerIndex, pIndex);
-            }
+            if (selectionPhase === 'player') { selectedPlayerIndex = pIndex; if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'player'); else proceedToEnemySelect(); }
+            else { if (isMoveMode && !isRandom) openMoveSelector(pIndex, 'enemy'); else startGame(selectedPlayerIndex, pIndex); }
         }
-
-        function proceedToEnemySelect() {
-            selectionPhase = 'enemy';
-            document.getElementById('select-title').innerText = "Choose Opponent";
-            document.getElementById('search-bar').value = "";
-            document.getElementById('shiny-mode').checked = false;
-            document.getElementById('move-mode').checked = false;
-            isShinyMode = false; isMoveMode = false;
-            renderSelectionGrid();
-        }
-
+        function proceedToEnemySelect() { selectionPhase = 'enemy'; document.getElementById('select-title').innerText = "Choose Opponent"; document.getElementById('search-bar').value = ""; document.getElementById('shiny-mode').checked = false; document.getElementById('move-mode').checked = false; isShinyMode = false; isMoveMode = false; renderSelectionGrid(); }
+        
+        // --- NEW INSTANT MOVE SELECTOR ---
         function openMoveSelector(pIndex, target) {
             currentMoveSelectionTarget = target;
             const pData = pokemonList[pIndex].fullData;
-            const validMoves = getValidMoves(pData);
             tempSelectedMoves = [];
             document.getElementById('modal-pokemon-name').innerText = target === 'enemy' ? "Enemy " + pData.name.toUpperCase() : pData.name.toUpperCase();
             const grid = document.getElementById('modal-move-grid');
             grid.innerHTML = "";
+            const validMoves = [];
+            pData.rawMoves.forEach(mName => {
+                if(MOVES_DB[mName]) {
+                    validMoves.push({
+                        name: mName.replace(/-/g, ' '),
+                        power: MOVES_DB[mName][0],
+                        type: MOVES_DB[mName][1],
+                        cat: MOVES_DB[mName][2]
+                    });
+                }
+            });
+            if (validMoves.length === 0) validMoves.push({ name: "struggle", power: 50, type: "normal", cat: "Physical" });
             validMoves.forEach(move => {
                 const div = document.createElement('div');
                 div.className = 'move-option';
@@ -573,182 +454,106 @@
             document.getElementById('move-modal').style.display = 'flex';
         }
 
-        function toggleMoveSelection(div, move) {
-            const index = tempSelectedMoves.indexOf(move);
-            if (index > -1) { tempSelectedMoves.splice(index, 1); div.classList.remove('selected'); } 
-            else { if (tempSelectedMoves.length < 4) { tempSelectedMoves.push(move); div.classList.add('selected'); } }
-            const count = tempSelectedMoves.length;
-            const btn = document.getElementById('confirm-moves-btn');
-            btn.innerText = `Confirm (${count}/4)`;
-            btn.disabled = (count !== 4);
-        }
-
+        function toggleMoveSelection(div, move) { const index = tempSelectedMoves.indexOf(move); if (index > -1) { tempSelectedMoves.splice(index, 1); div.classList.remove('selected'); } else { if (tempSelectedMoves.length < 4) { tempSelectedMoves.push(move); div.classList.add('selected'); } } const count = tempSelectedMoves.length; const btn = document.getElementById('confirm-moves-btn'); btn.innerText = `Confirm (${count}/4)`; btn.disabled = (count !== 4); }
         function closeMoveSelector() { document.getElementById('move-modal').style.display = 'none'; }
-
-        function confirmMoves(currentIndex) {
-            document.getElementById('move-modal').style.display = 'none';
-            document.getElementById('move-mode').checked = false; isMoveMode = false;
-            if (currentMoveSelectionTarget === 'player') { finalPlayerMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); proceedToEnemySelect(); }
-            else { finalEnemyMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); startGame(selectedPlayerIndex, currentIndex); }
+        function confirmMoves(currentIndex) { document.getElementById('move-modal').style.display = 'none'; document.getElementById('move-mode').checked = false; isMoveMode = false; if (currentMoveSelectionTarget === 'player') { finalPlayerMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); proceedToEnemySelect(); } else { finalEnemyMoves = JSON.parse(JSON.stringify(tempSelectedMoves)); startGame(selectedPlayerIndex, currentIndex); } }
+        
+        function pickRandomMoves(rawMoves) { 
+            let valid = rawMoves.filter(n => MOVES_DB[n]);
+            let shuffled = [...valid].sort(() => 0.5 - Math.random()); 
+            let selectedNames = shuffled.slice(0, 4); 
+            if (selectedNames.length === 0) return [{name: "struggle", power: 50, type: "normal", cat: "Physical"}]; 
+            return selectedNames.map(name => ({
+                name: name.replace(/-/g, ' '),
+                power: MOVES_DB[name][0],
+                type: MOVES_DB[name][1],
+                cat: MOVES_DB[name][2]
+            }));
         }
 
         async function startGame(pIndex, eIndex) {
             await ensurePokemonData(eIndex);
-            const pData = pokemonList[pIndex].fullData;
-            player = JSON.parse(JSON.stringify(pData));
+            const pData = pokemonList[pIndex].fullData; player = JSON.parse(JSON.stringify(pData)); 
+            player.stages = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 };
             player.maxHp = Math.floor(pData.stats.hp + 60 + 50); player.currHp = player.maxHp; player.isPlayer = true;
-            player.moves = finalPlayerMoves ? finalPlayerMoves : pickRandomMoves(getValidMoves(pData));
-
-            const eData = pokemonList[eIndex].fullData;
-            enemy = JSON.parse(JSON.stringify(eData));
-            enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50); enemy.currHp = enemy.maxHp; enemy.isPlayer = false;
-            enemy.moves = finalEnemyMoves ? finalEnemyMoves : pickRandomMoves(getValidMoves(eData));
-
-            // SAFE AUDIO START
-            welcomeBgm.pause();
-            battleBgm.volume = 0.3; battleBgm.currentTime = 1; 
-            battleBgm.play().catch(e => console.log("Audio Error:", e));
-
-            const pSprite = playerShiny ? player.backShiny : player.back;
-            const eSprite = enemyShiny ? enemy.frontShiny : enemy.front;
-
-            document.getElementById('player-img').src = pSprite;
-            document.getElementById('player-name').textContent = player.name;
-            document.getElementById('player-type').textContent = player.types.join(" / ");
-            document.getElementById('player-ability').textContent = `Ability: ${player.ability}`;
-            updateHealthUI(player);
-
-            document.getElementById('enemy-img').src = eSprite;
-            document.getElementById('enemy-name').textContent = enemy.name;
-            document.getElementById('enemy-type').textContent = enemy.types.join(" / ");
-            document.getElementById('enemy-ability').textContent = `Ability: ${enemy.ability}`;
-            updateHealthUI(enemy);
-
-            const pImg = document.getElementById('player-img');
-            const eImg = document.getElementById('enemy-img');
-            // Remove old classes
-            pImg.classList.remove('pop-p'); eImg.classList.remove('pop-e');
-            // Reset state
-            pImg.style.opacity = '0'; 
-            eImg.style.opacity = '0'; 
-
-            const pBall = document.getElementById('player-ball');
-            const eBall = document.getElementById('enemy-ball');
-            pBall.style.display = 'block'; pBall.classList.add('throw-p');
-            eBall.style.display = 'block'; eBall.classList.add('throw-e');
-
-            const movesContainer = document.getElementById('moves-ui');
-            movesContainer.innerHTML = "";
-            player.moves.forEach((move, i) => {
-                const btn = document.createElement('button');
-                btn.className = "move-btn";
-                btn.textContent = move.name;
-                btn.onclick = () => handleTurn(i);
-                movesContainer.appendChild(btn);
-            });
-
-            document.getElementById('flash-overlay').style.opacity = '1';
-            dialogueBox.textContent = `Battle Start!`;
+            if (finalPlayerMoves) player.moves = finalPlayerMoves; else player.moves = pickRandomMoves(pData.rawMoves);
             
+            const eData = pokemonList[eIndex].fullData; enemy = JSON.parse(JSON.stringify(eData));
+            enemy.stages = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 };
+            enemy.maxHp = Math.floor(eData.stats.hp + 60 + 50); enemy.currHp = enemy.maxHp; enemy.isPlayer = false;
+            if (finalEnemyMoves) enemy.moves = finalEnemyMoves; else enemy.moves = pickRandomMoves(eData.rawMoves);
+
+            welcomeBgm.pause(); battleBgm.volume = 0.3; battleBgm.currentTime = 1; battleBgm.play().catch(e => console.log("Audio Error:", e));
+
+            const pSprite = playerShiny ? player.backShiny : player.back; const eSprite = enemyShiny ? enemy.frontShiny : enemy.front;
+            document.getElementById('player-img').src = pSprite; document.getElementById('player-name').textContent = player.name; document.getElementById('player-type').textContent = player.types.join(" / "); document.getElementById('player-ability').textContent = `Ability: ${player.ability}`; updateHealthUI(player);
+            document.getElementById('enemy-img').src = eSprite; document.getElementById('enemy-name').textContent = enemy.name; document.getElementById('enemy-type').textContent = enemy.types.join(" / "); document.getElementById('enemy-ability').textContent = `Ability: ${enemy.ability}`; updateHealthUI(enemy);
+
+            const pImg = document.getElementById('player-img'); const eImg = document.getElementById('enemy-img');
+            pImg.classList.remove('pop-p'); eImg.classList.remove('pop-e'); pImg.style.opacity = '0'; eImg.style.opacity = '0'; 
+            const pBall = document.getElementById('player-ball'); const eBall = document.getElementById('enemy-ball');
+            pBall.style.display = 'block'; pBall.classList.add('throw-p'); eBall.style.display = 'block'; eBall.classList.add('throw-e');
+
+            const movesContainer = document.getElementById('moves-ui'); movesContainer.innerHTML = "";
+            player.moves.forEach((move, i) => { const btn = document.createElement('button'); btn.className = "move-btn"; btn.textContent = move.name; btn.onclick = () => handleTurn(i); movesContainer.appendChild(btn); });
+
+            document.getElementById('flash-overlay').style.opacity = '1'; dialogueBox.textContent = `Battle Start!`;
             setTimeout(() => {
-                switchScreen('game-container');
-                document.getElementById('flash-overlay').style.opacity = '0';
-                document.getElementById('mute-btn').style.display = 'block';
+                switchScreen('game-container'); document.getElementById('flash-overlay').style.opacity = '0'; document.getElementById('mute-btn').style.display = 'block';
                 setTimeout(() => {
-                    pBall.style.display = 'none'; pBall.classList.remove('throw-p');
-                    eBall.style.display = 'none'; eBall.classList.remove('throw-e');
-                    
-                    // Add new pop animation classes
-                    pImg.classList.add('pop-p');
-                    eImg.classList.add('pop-e');
-                    
-                    if(playerShiny) triggerShinySparkles('player-pos');
-                    if(enemyShiny) triggerShinySparkles('enemy-pos');
+                    pBall.style.display = 'none'; pBall.classList.remove('throw-p'); eBall.style.display = 'none'; eBall.classList.remove('throw-e');
+                    pImg.classList.add('pop-p'); eImg.classList.add('pop-e');
+                    if(playerShiny) triggerShinySparkles('player-pos'); if(enemyShiny) triggerShinySparkles('enemy-pos');
                     setTimeout(() => triggerEntryAbilities(player, enemy), 500);
                 }, 800);
             }, 200);
         }
 
-        // --- NEW: ROBUST RESET FUNCTION ---
         function resetToSelect() {
-            // Stop and Reset Audio Safely
-            try {
-                battleBgm.pause(); battleBgm.currentTime = 0;
-                victoryBgm.pause(); victoryBgm.currentTime = 0;
-                welcomeBgm.currentTime = 1;
-                welcomeBgm.play().catch(e => console.log("Audio Error Ignored:", e));
-            } catch(e) { console.log("Audio reset skipped"); }
-
-            // Reset Game State
-            finalPlayerMoves = null;
-            finalEnemyMoves = null;
-            tempSelectedMoves = [];
-            currentOffset = 0;
-            selectionPhase = 'player';
-            selectedPlayerIndex = null;
-            isShinyMode = false;
-            isMoveMode = false;
-
-            // Reset UI Elements
-            document.getElementById('moves-ui').style.display = 'grid';
-            document.getElementById('reset-ui').style.display = 'none';
-            document.getElementById('move-modal').style.display = 'none';
-            
-            // Checkboxes
-            document.getElementById('shiny-mode').checked = false;
-            document.getElementById('move-mode').checked = false;
-
+            try { battleBgm.pause(); battleBgm.currentTime = 0; victoryBgm.pause(); victoryBgm.currentTime = 0; welcomeBgm.currentTime = 1; welcomeBgm.play().catch(e => console.log(e)); } catch(e) {}
+            finalPlayerMoves = null; finalEnemyMoves = null; tempSelectedMoves = []; currentOffset = 0; selectionPhase = 'player'; selectedPlayerIndex = null; isShinyMode = false; isMoveMode = false;
+            document.getElementById('moves-ui').style.display = 'grid'; document.getElementById('reset-ui').style.display = 'none'; document.getElementById('move-modal').style.display = 'none';
+            document.getElementById('shiny-mode').checked = false; document.getElementById('move-mode').checked = false;
+            document.getElementById('player-img').classList.remove('pop-p'); document.getElementById('enemy-img').classList.remove('pop-e');
+            document.getElementById('player-ball').classList.remove('throw-p'); document.getElementById('enemy-ball').classList.remove('throw-e');
             dialogueBox.textContent = "Choose a Pokémon to begin!";
-            
-            // Remove animation classes so they re-trigger next time
-            document.getElementById('player-img').classList.remove('pop-p');
-            document.getElementById('enemy-img').classList.remove('pop-e');
-            document.getElementById('player-ball').classList.remove('throw-p');
-            document.getElementById('enemy-ball').classList.remove('throw-e');
-
-            renderSelectionGrid(); // Re-render grid from top
-            switchScreen('select-screen');
-        }
-
-        // --- BATTLE LOGIC ---
-        function getValidMoves(pokemon) {
-            let moves = [];
-            pokemon.rawMoves.forEach(mName => {
-                if (MASTER_MOVE_DEX[mName]) {
-                    const moveData = MASTER_MOVE_DEX[mName];
-                    moves.push({ name: mName.replace(/-/g, ' '), ...moveData });
-                }
-            });
-            if (!moves.some(m => m.cat === 'Status')) moves.push({ name: "recover", power: -50, type: "heal", cat: "Status" });
-            return moves;
-        }
-
-        function pickRandomMoves(validMoves) {
-            let shuffled = [...validMoves].sort(() => 0.5 - Math.random());
-            let finalMoves = shuffled.slice(0, 4);
-            if (finalMoves.length === 0) finalMoves.push({name: "Struggle", power: 50, type: "normal", cat: "Physical"});
-            return finalMoves;
+            renderSelectionGrid(); switchScreen('select-screen');
         }
 
         function triggerShinySparkles(containerId) {
             const container = document.getElementById(containerId);
             for(let i=0; i<6; i++) {
-                const star = document.createElement('div');
-                star.className = 'shiny-star sparkle-anim';
-                const tx = (Math.random() - 0.5) * 400 + "%"; // Wider spread for bigger mons
-                const ty = (Math.random() - 0.5) * 400 + "%";
-                star.style.setProperty('--tx', tx);
-                star.style.setProperty('--ty', ty);
-                container.appendChild(star);
-                setTimeout(() => star.remove(), 1000);
+                const star = document.createElement('div'); star.className = 'shiny-star sparkle-anim';
+                const tx = (Math.random() - 0.5) * 400 + "%"; const ty = (Math.random() - 0.5) * 400 + "%";
+                star.style.setProperty('--tx', tx); star.style.setProperty('--ty', ty);
+                container.appendChild(star); setTimeout(() => star.remove(), 1000);
             }
         }
 
         function triggerEntryAbilities(p, e) {
             if (p.ability === 'intimidate' || e.ability === 'intimidate') {
-                if(p.ability === 'intimidate') { e.stats.atk = Math.floor(e.stats.atk * 0.67); typeWriter(`${p.name}'s Intimidate cuts ${e.name}'s Attack!`); }
-                if(e.ability === 'intimidate') { p.stats.atk = Math.floor(p.stats.atk * 0.67); setTimeout(() => typeWriter(`${e.name}'s Intimidate cuts ${p.name}'s Attack!`), 1500); }
+                if(p.ability === 'intimidate') { modStat(e, 'atk', -1); typeWriter(`${p.name}'s Intimidate cuts ${e.name}'s Attack!`); }
+                if(e.ability === 'intimidate') { modStat(p, 'atk', -1); setTimeout(() => typeWriter(`${e.name}'s Intimidate cuts ${p.name}'s Attack!`), 1500); }
             } else { typeWriter(`What will ${player.name} do?`); }
+        }
+        
+        // --- STAT MODIFIER HELPER + VFX TRIGGER ---
+        function modStat(target, stat, amount) {
+            target.stages[stat] = Math.max(-6, Math.min(6, target.stages[stat] + amount));
+            const spriteId = target.isPlayer ? 'player-img' : 'enemy-img';
+            triggerStatAnim(spriteId, amount > 0 ? 'up' : 'down');
+        }
+
+        function triggerStatAnim(spriteId, dir) {
+            const container = document.getElementById(spriteId).parentElement;
+            const aura = document.createElement('div');
+            aura.className = dir === 'up' ? 'stat-up-anim' : 'stat-down-anim';
+            // Center aura on sprite
+            aura.style.left = '50%'; 
+            aura.style.marginLeft = '-50px'; // Half width
+            aura.style.bottom = '0';
+            container.appendChild(aura);
+            setTimeout(() => aura.remove(), 800);
         }
 
         function handleTurn(playerMoveIndex) {
@@ -758,60 +563,112 @@
             let first, second, firstMove, secondMove;
             if (player.stats.spe >= enemy.stats.spe) { first = player; firstMove = playerMove; second = enemy; secondMove = enemyMove; }
             else { first = enemy; firstMove = enemyMove; second = player; secondMove = playerMove; }
-            executeMove(first, second, firstMove, () => {
-                if(second.currHp > 0) {
-                    setTimeout(() => executeMove(second, first, secondMove, () => {
-                        if(first.currHp > 0) { typeWriter(`What will ${player.name} do?`); disableButtons(false); }
-                    }), 1000);
-                }
-            });
+            
+            if(first.chargingMove) { executeMove(first, second, first.chargingMove, () => { if(second.currHp > 0) processSecond(second, first, secondMove); }); }
+            else { executeMove(first, second, firstMove, () => { if(second.currHp > 0) processSecond(second, first, secondMove); }); }
+            
+            function processSecond(atk, def, move) {
+                 if(atk.chargingMove) { executeMove(atk, def, atk.chargingMove, endTurn); }
+                 else { executeMove(atk, def, move, endTurn); }
+            }
+            
+            function endTurn() {
+                if(player.currHp > 0 && enemy.currHp > 0) { typeWriter(`What will ${player.name} do?`); disableButtons(false); }
+            }
         }
 
         function executeMove(attacker, defender, move, callback) {
+            const rawName = move.name.toLowerCase().replace(/ /g, '-');
+            const logic = MOVE_LOGIC[rawName] || {};
+            
+            if(logic.twoTurn && !attacker.chargingMove) {
+                attacker.chargingMove = move;
+                attacker.status = logic.state || "charging";
+                typeWriter(`${attacker.name} ${logic.msg1 || "is charging!"}`, callback);
+                return;
+            }
+            if(attacker.chargingMove) {
+                attacker.chargingMove = null; 
+                attacker.status = null;
+            }
+            
+            if(defender.status === "flying" || defender.status === "digging" || defender.status === "vanishing") {
+                 typeWriter(`${attacker.name}'s attack missed!`, callback);
+                 return;
+            }
+
             const attackerSprite = document.getElementById(attacker.isPlayer ? 'player-img' : 'enemy-img');
             const defenderSprite = document.getElementById(attacker.isPlayer ? 'enemy-img' : 'player-img');
+            const vfxLayer = document.getElementById('vfx-layer');
+            
             typeWriter(`${attacker.name} used ${move.name}!`, () => {
                 const anim = attacker.isPlayer ? 'lunge' : 'lunge-enemy';
                 attackerSprite.classList.add(anim);
                 setTimeout(() => attackerSprite.classList.remove(anim), 300);
+
+                if (move.cat === 'Physical') {
+                    const slash = document.createElement('div'); slash.className = 'slash-anim';
+                    const targetRect = defenderSprite.parentElement.getBoundingClientRect(); 
+                    slash.style.left = (targetRect.left + 80) + 'px'; slash.style.top = (targetRect.top + 50) + 'px';
+                    slash.style.animation = 'slash-motion 0.4s ease-out forwards'; vfxLayer.appendChild(slash); setTimeout(() => slash.remove(), 400);
+                } else if (move.cat === 'Special') {
+                    const beam = document.createElement('div'); beam.className = 'beam-anim';
+                    beam.style.animation = attacker.isPlayer ? 'beam-p-to-e 0.6s linear forwards' : 'beam-e-to-p 0.6s linear forwards';
+                    vfxLayer.appendChild(beam); setTimeout(() => beam.remove(), 600);
+                }
+
                 setTimeout(() => {
+                    // --- STATUS LOGIC ---
                     if (move.cat === 'Status') {
-                        const healAmount = Math.abs(move.power);
-                        attacker.currHp = Math.min(attacker.maxHp, attacker.currHp + healAmount);
-                        updateHealthUI(attacker);
-                        typeWriter(`${attacker.name} recovered HP!`, callback);
-                    } else {
+                        if(logic.boost) {
+                            const tgt = logic.target === 'self' ? attacker : defender;
+                            for(const [stat, amt] of Object.entries(logic.boost)) modStat(tgt, stat, amt);
+                            typeWriter(`${tgt.name}'s ${logic.msg}`, callback);
+                        } else if(logic.heal) {
+                            const heal = Math.floor(attacker.maxHp * logic.heal);
+                            attacker.currHp = Math.min(attacker.maxHp, attacker.currHp + heal);
+                            updateHealthUI(attacker);
+                            typeWriter(`${attacker.name} ${logic.msg}`, callback);
+                        } else if(logic.status) {
+                            if (!defender.statusCondition) {
+                                defender.statusCondition = logic.status;
+                                typeWriter(`${defender.name} ${logic.msg}`, callback);
+                            } else {
+                                typeWriter(`But it failed!`, callback);
+                            }
+                        } else {
+                            typeWriter(`${attacker.name} used ${move.name}!`, callback); 
+                        }
+                    } 
+                    // --- DAMAGE LOGIC ---
+                    else {
                         let A = (move.cat === "Physical") ? attacker.stats.atk : attacker.stats.spa;
                         let D = (move.cat === "Physical") ? defender.stats.def : defender.stats.spd;
-                        if (attacker.ability === 'huge-power' && move.cat === "Physical") A *= 2;
+                        
+                        const aStage = (move.cat === "Physical") ? attacker.stages.atk : attacker.stages.spa;
+                        const dStage = (move.cat === "Physical") ? defender.stages.def : defender.stages.spd;
+                        
+                        if(aStage > 0) A *= (2 + aStage) / 2; else A *= 2 / (2 - aStage);
+                        if(dStage > 0) D *= (2 + dStage) / 2; else D *= 2 / (2 - dStage);
+
                         let baseDmg = ((22 * move.power * (A / D)) / 50) + 2;
                         const hpPct = attacker.currHp / attacker.maxHp;
                         if (hpPct <= 0.33) { if ((attacker.ability === 'blaze' && move.type === 'fire') || (attacker.ability === 'torrent' && move.type === 'water') || (attacker.ability === 'overgrow' && move.type === 'grass') || (attacker.ability === 'swarm' && move.type === 'bug')) baseDmg *= 1.5; }
                         if (attacker.ability === 'technician' && move.power <= 60) baseDmg *= 1.5;
                         let multiplier = 1.0;
                         defender.types.forEach(t => { const map = TYPE_CHART[move.type.toLowerCase()]; if (map && map[t.toLowerCase()] !== undefined) multiplier *= map[t.toLowerCase()]; });
-                        if (defender.ability === 'levitate' && move.type === 'ground') multiplier = 0;
-                        if (defender.ability === 'flash-fire' && move.type === 'fire') multiplier = 0;
+                        if (defender.ability === 'levitate' && move.type === 'ground') multiplier = 0; if (defender.ability === 'flash-fire' && move.type === 'fire') multiplier = 0;
                         if ((defender.ability === 'volt-absorb' || defender.ability === 'lightning-rod') && move.type === 'electric') multiplier = 0;
                         if (defender.ability === 'wonder-guard' && multiplier <= 1) multiplier = 0; 
-                        let stab = 1.0;
-                        if (attacker.types.includes(move.type)) stab = 1.5;
-                        let random = (Math.floor(Math.random() * 16) + 85) / 100;
-                        let damage = Math.floor(baseDmg * multiplier * stab * random);
-                        const isCrit = Math.random() < 0.0625;
-                        if(isCrit) damage = Math.floor(damage * 1.5);
-                        defender.currHp = Math.max(0, defender.currHp - damage);
-                        updateHealthUI(defender);
-                        defenderSprite.classList.add('shake');
-                        setTimeout(() => defenderSprite.classList.remove('shake'), 500);
+                        let stab = 1.0; if (attacker.types.includes(move.type)) stab = 1.5;
+                        let random = (Math.floor(Math.random() * 16) + 85) / 100; let damage = Math.floor(baseDmg * multiplier * stab * random);
+                        const isCrit = Math.random() < 0.0625; if(isCrit) damage = Math.floor(damage * 1.5);
+                        defender.currHp = Math.max(0, defender.currHp - damage); updateHealthUI(defender);
+                        
+                        if (damage > 0) { defenderSprite.classList.add('shake'); defenderSprite.classList.add('hit-red'); setTimeout(() => { defenderSprite.classList.remove('shake'); defenderSprite.classList.remove('hit-red'); }, 500); }
+
                         setTimeout(() => {
-                            let msg = "";
-                            if(multiplier === 0) {
-                                if(defender.ability === 'levitate') msg = "It doesn't affect... (Levitate)";
-                                else if(defender.ability === 'flash-fire') msg = "It doesn't affect... (Flash Fire)";
-                                else msg = "It had no effect...";
-                            } else if(multiplier > 1) msg = "It's super effective!"; else if(multiplier < 1) msg = "It's not very effective...";
-                            if(isCrit && multiplier > 0) msg += (msg ? " " : "") + "Critical hit!";
+                            let msg = ""; if(multiplier === 0) { if(defender.ability === 'levitate') msg = "It doesn't affect... (Levitate)"; else if(defender.ability === 'flash-fire') msg = "It doesn't affect... (Flash Fire)"; else msg = "It had no effect..."; } else if(multiplier > 1) msg = "It's super effective!"; else if(multiplier < 1) msg = "It's not very effective..."; if(isCrit && multiplier > 0) msg += (msg ? " " : "") + "Critical hit!";
                             if(msg) typeWriter(msg, () => checkFaint(defender, callback)); else checkFaint(defender, callback);
                         }, 600);
                     }
@@ -819,136 +676,20 @@
             });
         }
 
-        function checkFaint(char, cb) {
-            if (char.currHp <= 0) {
-                const sprite = document.getElementById(char.isPlayer ? 'player-img' : 'enemy-img');
-                battleBgm.pause(); battleBgm.currentTime = 0;
-                if (!char.isPlayer) { victoryBgm.volume = 0.3; victoryBgm.currentTime = 1; victoryBgm.play().catch(e => console.log(e)); }
-                typeWriter(`${char.name} fainted!`, () => {
-                    sprite.style.opacity = '0';
-                    if (char.isPlayer) typeWriter("You lost...", showReset); else typeWriter("You won!", showReset);
-                });
-            } else { cb(); }
-        }
-
-        function updateHealthUI(char) {
-            const role = char.isPlayer ? 'player' : 'enemy';
-            const bar = document.getElementById(`${role}-hp-bar`);
-            const pct = (char.currHp / char.maxHp) * 100;
-            bar.style.width = pct + "%";
-            if(pct > 50) bar.style.backgroundColor = "#4caf50"; else if(pct > 20) bar.style.backgroundColor = "#ffeb3b"; else bar.style.backgroundColor = "#f44336";
-            if(char.isPlayer) document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`;
-        }
-
-        function typeWriter(text, cb) {
-            dialogueBox.textContent = "";
-            let i = 0;
-            function type() { if (i < text.length) { dialogueBox.textContent += text.charAt(i); i++; setTimeout(type, 20); } else if (cb) { setTimeout(cb, 500); } }
-            type();
-        }
-
+        function checkFaint(char, cb) { if (char.currHp <= 0) { const sprite = document.getElementById(char.isPlayer ? 'player-img' : 'enemy-img'); battleBgm.pause(); battleBgm.currentTime = 0; if (!char.isPlayer) { victoryBgm.volume = 0.3; victoryBgm.currentTime = 1; victoryBgm.play().catch(e => console.log(e)); } typeWriter(`${char.name} fainted!`, () => { sprite.style.opacity = '0'; if (char.isPlayer) typeWriter("You lost...", showReset); else typeWriter("You won!", showReset); }); } else { cb(); } }
+        function updateHealthUI(char) { const role = char.isPlayer ? 'player' : 'enemy'; const bar = document.getElementById(`${role}-hp-bar`); const pct = (char.currHp / char.maxHp) * 100; bar.style.width = pct + "%"; if(pct > 50) bar.style.backgroundColor = "#4caf50"; else if(pct > 20) bar.style.backgroundColor = "#ffeb3b"; else bar.style.backgroundColor = "#f44336"; if(char.isPlayer) document.getElementById('player-hp-text').textContent = `${char.currHp}/${char.maxHp}`; }
+        function typeWriter(text, cb) { dialogueBox.textContent = ""; let i = 0; function type() { if (i < text.length) { dialogueBox.textContent += text.charAt(i); i++; setTimeout(type, 20); } else if (cb) { setTimeout(cb, 500); } } type(); }
         function disableButtons(disabled) { document.querySelectorAll('.move-btn').forEach(b => b.disabled = disabled); }
         function showReset() { document.getElementById('moves-ui').style.display = 'none'; document.getElementById('reset-ui').style.display = 'grid'; }
-        function toggleMute() {
-            welcomeBgm.muted = !welcomeBgm.muted; battleBgm.muted = !battleBgm.muted; victoryBgm.muted = !victoryBgm.muted;
-            const btn = document.getElementById('mute-btn');
-            if (welcomeBgm.muted) { btn.textContent = "🔇 Unmute"; } else { btn.textContent = "🔊 Mute"; }
-        }
-
-        // --- SIDEBAR UI LOGIC ---
-        document.addEventListener('keydown', (e) => { 
-            if (e.code === 'ShiftRight') { 
-                toggleChat(); 
-            }
-        });
-
-        function toggleChat() { 
-            const sidebar = document.getElementById('chat-sidebar');
-            const hint = document.getElementById('sidebar-hint');
-            
-            sidebar.classList.toggle('open');
-            
-            if(sidebar.classList.contains('open')) {
-                hint.classList.add('hidden');
-            } else {
-                hint.classList.remove('hidden');
-            }
-        }
+        function toggleMute() { welcomeBgm.muted = !welcomeBgm.muted; battleBgm.muted = !battleBgm.muted; victoryBgm.muted = !victoryBgm.muted; const btn = document.getElementById('mute-btn'); if (welcomeBgm.muted) { btn.textContent = "🔇 Unmute"; } else { btn.textContent = "🔊 Mute"; } }
+        document.addEventListener('keydown', (e) => { if (e.code === 'ShiftRight') toggleChat(); });
+        function toggleChat() { const sidebar = document.getElementById('chat-sidebar'); const hint = document.getElementById('sidebar-hint'); sidebar.classList.toggle('open'); if(sidebar.classList.contains('open')) hint.classList.add('hidden'); else hint.classList.remove('hidden'); }
         function fillChat(text) { document.getElementById('chat-input').value = text; document.getElementById('chat-input').focus(); }
-        document.getElementById('chat-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                const text = this.value.trim();
-                if (!text) return;
-                addChatMessage(text, 'user');
-                this.value = '';
-                if (text.startsWith('/dt ')) handleDataCommand(text.substring(4).trim());
-                else if (text.startsWith('/weak ')) handleWeaknessCommand(text.substring(6).trim());
-                else if (text.startsWith('/learn ')) handleLearnCommand(text.substring(7).trim());
-                else if (text === '/calc') addChatMessage("<a href='https://calc.pokemonshowdown.com/' target='_blank'>Damage Calculator</a>", 'bot');
-                else if (text === '/help') addChatMessage("Commands: /dt, /weak, /learn, /calc", 'bot');
-                else setTimeout(() => addChatMessage("Unknown command.", 'bot'), 500);
-            }
-        });
-        function addChatMessage(msg, type) {
-            const chatBody = document.getElementById('chat-history');
-            const div = document.createElement('div');
-            div.className = `chat-msg ${type}`;
-            div.innerHTML = msg;
-            chatBody.appendChild(div);
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
-        
-        async function handleDataCommand(query) {
-            const cleanQuery = query.toLowerCase().replace(/ /g, '-');
-            const pokemon = pokemonList.find(p => p.name === cleanQuery);
-            if (pokemon) {
-                const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
-                const html = `<div class="dt-card"><div class="dt-title">${fullP.name}</div><div class="dt-row"><span>Type:</span> <span>${fullP.types.join('/')}</span></div><div class="dt-row"><span>Stats:</span> <span>${fullP.stats.hp}/${fullP.stats.atk}/${fullP.stats.def}/${fullP.stats.spa}/${fullP.stats.spd}/${fullP.stats.spe}</span></div><div class="dt-row"><span>Ability:</span> <span>${fullP.ability}</span></div></div>`;
-                addChatMessage(html, 'bot');
-                return;
-            }
-            if (MASTER_MOVE_DEX[cleanQuery]) {
-                const m = MASTER_MOVE_DEX[cleanQuery];
-                addChatMessage(`<div class="dt-card"><div class="dt-title">${query}</div><div class="dt-row"><span>${m.type}</span> <span>${m.cat}</span></div><div class="dt-row"><span>Power:</span> <span>${m.power}</span></div></div>`, 'bot');
-                return;
-            }
-            addChatMessage("Not found.", 'bot');
-        }
-
-        async function handleWeaknessCommand(query) {
-            const cleanQuery = query.toLowerCase().replace(/ /g, '-');
-            let types = [];
-            const pokemon = pokemonList.find(p => p.name === cleanQuery);
-            if(pokemon) {
-                const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
-                types = fullP.types;
-            } else if (TYPE_CHART[cleanQuery]) {
-                types = [cleanQuery];
-            } else {
-                addChatMessage("Invalid input.", 'bot'); return;
-            }
-            let weaknesses = {};
-            Object.keys(TYPE_CHART).forEach(atk => {
-                let m = 1;
-                types.forEach(def => { if(TYPE_CHART[atk] && TYPE_CHART[atk][def]!==undefined) m *= TYPE_CHART[atk][def]; });
-                if(m > 1) weaknesses[atk] = m;
-            });
-            let msg = `<b>${query} Weak:</b> `;
-            for(const [t,m] of Object.entries(weaknesses)) msg += `${t} x${m}, `;
-            addChatMessage(msg, 'bot');
-        }
-
-        async function handleLearnCommand(query) {
-            const parts = query.split(',');
-            if(parts.length < 2) return addChatMessage("Usage: /learn mon, move", 'bot');
-            const pokeName = parts[0].trim().toLowerCase().replace(/ /g, '-');
-            const moveName = parts[1].trim().toLowerCase().replace(/ /g, '-');
-            const pokemon = pokemonList.find(p => p.name === pokeName);
-            if(!pokemon) return addChatMessage("Pokemon not found", 'bot');
-            const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon));
-            if(fullP.rawMoves.includes(moveName)) addChatMessage("Yes, learnable.", 'bot');
-            else addChatMessage("No, not learnable.", 'bot');
-        }
+        document.getElementById('chat-input').addEventListener('keypress', function (e) { if (e.key === 'Enter') { const text = this.value.trim(); if (!text) return; addChatMessage(text, 'user'); this.value = ''; if (text.startsWith('/dt ')) handleDataCommand(text.substring(4).trim()); else if (text.startsWith('/weak ')) handleWeaknessCommand(text.substring(6).trim()); else if (text.startsWith('/learn ')) handleLearnCommand(text.substring(7).trim()); else if (text === '/calc') addChatMessage("<a href='https://calc.pokemonshowdown.com/' target='_blank'>Damage Calculator</a>", 'bot'); else if (text === '/help') addChatMessage("Commands: /dt, /weak, /learn, /calc", 'bot'); else setTimeout(() => addChatMessage("Unknown command.", 'bot'), 500); } });
+        function addChatMessage(msg, type) { const chatBody = document.getElementById('chat-history'); const div = document.createElement('div'); div.className = `chat-msg ${type}`; div.innerHTML = msg; chatBody.appendChild(div); chatBody.scrollTop = chatBody.scrollHeight; }
+        async function handleDataCommand(query) { const cleanQuery = query.toLowerCase().replace(/ /g, '-'); const pokemon = pokemonList.find(p => p.name === cleanQuery); if (pokemon) { const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon)); const html = `<div class="dt-card"><div class="dt-title">${fullP.name}</div><div class="dt-row"><span>Type:</span> <span>${fullP.types.join('/')}</span></div><div class="dt-row"><span>Stats:</span> <span>${fullP.stats.hp}/${fullP.stats.atk}/${fullP.stats.def}/${fullP.stats.spa}/${fullP.stats.spd}/${fullP.stats.spe}</span></div><div class="dt-row"><span>Ability:</span> <span>${fullP.ability}</span></div></div>`; addChatMessage(html, 'bot'); return; } if (MOVES_DB[cleanQuery]) { const m = MOVES_DB[cleanQuery]; addChatMessage(`<div class="dt-card"><div class="dt-title">${query}</div><div class="dt-row"><span>${m[1]}</span> <span>${m[2]}</span></div><div class="dt-row"><span>Power:</span> <span>${m[0]}</span></div></div>`, 'bot'); return; } addChatMessage("Not found.", 'bot'); }
+        async function handleWeaknessCommand(query) { const cleanQuery = query.toLowerCase().replace(/ /g, '-'); let types = []; const pokemon = pokemonList.find(p => p.name === cleanQuery); if(pokemon) { const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon)); types = fullP.types; } else if (TYPE_CHART[cleanQuery]) { types = [cleanQuery]; } else { addChatMessage("Invalid input.", 'bot'); return; } let weaknesses = {}; Object.keys(TYPE_CHART).forEach(atk => { let m = 1; types.forEach(def => { if(TYPE_CHART[atk] && TYPE_CHART[atk][def]!==undefined) m *= TYPE_CHART[atk][def]; }); if(m > 1) weaknesses[atk] = m; }); let msg = `<b>${query} Weak:</b> `; for(const [t,m] of Object.entries(weaknesses)) msg += `${t} x${m}, `; addChatMessage(msg, 'bot'); }
+        async function handleLearnCommand(query) { const parts = query.split(','); if(parts.length < 2) return addChatMessage("Usage: /learn mon, move", 'bot'); const pokeName = parts[0].trim().toLowerCase().replace(/ /g, '-'); const moveName = parts[1].trim().toLowerCase().replace(/ /g, '-'); const pokemon = pokemonList.find(p => p.name === pokeName); if(!pokemon) return addChatMessage("Pokemon not found", 'bot'); const fullP = await ensurePokemonData(pokemonList.indexOf(pokemon)); if(fullP.rawMoves.includes(moveName)) addChatMessage("Yes, learnable.", 'bot'); else addChatMessage("No, not learnable.", 'bot'); }
     </script>
 </body>
 </html>
